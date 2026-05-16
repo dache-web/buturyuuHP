@@ -11,15 +11,12 @@
 
 /******************** ▼ CONFIGURATION ▼ ********************/
 const CONFIG = {
-  // ❶ スプレッドシートの URL 全文
-  SPREADSHEET_URL : 'https://docs.google.com/spreadsheets/d/15mdta0mkqDjYBBfcaC7-hf7PxTVa9tB5MibpOqC7WsM/edit?gid=758095427#gid=758095427',
-
-  // ❷ LINE チャネルアクセストークン
-  LINE_TOKEN      : '', // セキュリティ保護のため 90_Secrets/secrets.json へ移動済み
-
-  // ❸ 通知を送りたいグループ ID
-  ADMIN_GROUP_ID  : 'C8ec7f01e98cfb835411b55c04c816417',
-
+  // スプレッドシートの URL、LINEトークン、グループIDは
+  // スクリプトプロパティ（PropertiesService）から読み込みます。
+  SPREADSHEET_URL : PropertiesService.getScriptProperties().getProperty('SPREADSHEET_URL'),
+  LINE_TOKEN      : PropertiesService.getScriptProperties().getProperty('LINE_TOKEN'),
+  ADMIN_GROUP_ID  : PropertiesService.getScriptProperties().getProperty('ADMIN_GROUP_ID'),
+  
   TIMEZONE        : 'Asia/Tokyo'
 };
 
@@ -516,3 +513,20 @@ function sendPatternButtons(dateArr, targetId) {
 function qr(items) { return { type: 'text', text: '選択してください', quickReply: { items } }; }
 function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
 function fmt(d) { return Utilities.formatDate(d, CONFIG.TIMEZONE, 'yyyy-MM-dd'); }
+
+ 
+ / * * 
+   *   0Rg-��[(u0�y�[�`1X�0�0�0�0�0�0�0�0�0�0�0k0{v2�Y0�0��pe
+   *   G A S �0�0�0�0g0S0n0��pe�0x��bW0f00�[L�0W0f0O0`0U0D00
+   *   �[L��_o00S0n0��peT0h0JRd�W0f0O K g0Y00
+   * / 
+ f u n c t i o n   s e t u p S e c r e t s ( )   { 
+     c o n s t   p r o p s   =   P r o p e r t i e s S e r v i c e . g e t S c r i p t P r o p e r t i e s ( ) ; 
+     p r o p s . s e t P r o p e r t i e s ( { 
+         ' S P R E A D S H E E T _ U R L ' :   ' h t t p s : / / d o c s . g o o g l e . c o m / s p r e a d s h e e t s / d / 1 5 m d t a 0 m k q D j Y B B f c a C 7 - h f 7 P x T V a 9 t B 5 M i b p O q C 7 W s M / e d i t ? g i d = 7 5 8 0 9 5 4 2 7 # g i d = 7 5 8 0 9 5 4 2 7 ' , 
+         ' L I N E _ T O K E N ' :   ' X Z d w K y w Z u a t 4 t T w o v P n n N y o A k 7 U l a 5 U B C y Z q I P E Z O I Y V x 0 / d / U d / D W d G A H N v q x a U v X 7 y 9 6 R 6 v e E M p A q N U M R z 0 U 2 Q b 9 M 2 Z 2 S r Q m O i O G g 6 9 O d O A u S B s W t M S J I n 8 d H / s A K P U J b R 5 W L g h 6 F i f D e Z l T b 7 p Q d B 0 4 t 8 9 / 1 O / w 1 c D n y i l F U = ' , 
+         ' A D M I N _ G R O U P _ I D ' :   ' C 8 e c 7 f 0 1 e 9 8 c f b 8 3 5 4 1 1 b 5 5 c 0 4 c 8 1 6 4 1 7 ' 
+     } ) ; 
+     c o n s o l e . l o g ( ' �y�[�`1Xn0{v2�L0�[�NW0~0W0_00' ) ; 
+ }  
+ 
