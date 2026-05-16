@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>シフト登録</title>
+  <style>
+    :root {
+      --primary-color: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg-color: #f3f4f6;
+      --card-bg: #ffffff;
+      --text-main: #1f2937;
+      --text-sub: #6b7280;
+      --border-color: #d1d5db;
+      --success-bg: #ecfdf5;
+      --success-text: #065f46;
+      --error-bg: #fef2f2;
+      --error-text: #991b1b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 450px;
+      background: var(--card-bg);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      animation: slideUp 0.4s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      text-align: center;
+      color: var(--primary-color);
+    }
+
+    .info-box {
+      background: #eef2ff;
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+      font-size: 0.85rem;
+      color: #3730a3;
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    input[type="date"], select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+    }
+
+    .date-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: var(--primary-hover);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    #msg {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      display: none;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    .success { background: var(--success-bg); color: var(--success-text); border: 1px solid #a7f3d0; }
+    .error { background: var(--error-bg); color: var(--error-text); border: 1px solid #fecaca; }
+
+    .loader {
+      display: none;
+      margin: 15px auto;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid var(--primary-color);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>シフト登録</h1>
+  <div class="info-box">
+    期間を指定して、一括でシフトを登録できます。
+  </div>
+
+  <form id="shiftForm">
+    <input type="hidden" id="userId" value="<?= userId ?>">
+    
+    <div class="date-grid">
+      <div class="form-group">
+        <label>開始日</label>
+        <input type="date" id="startDate" required>
+      </div>
+      <div class="form-group">
+        <label>終了日</label>
+        <input type="date" id="endDate" required>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>シフトパターン</label>
+      <select id="patternIdx" required>
+        <? if (patterns && patterns.length > 0) { ?>
+          <? for (var i = 0; i < patterns.length; i++) { ?>
+            <option value="<?= i ?>"><?= patterns[i].label ?> (<?= patterns[i].team ?> / <?= patterns[i].time ?>)</option>
+          <? } ?>
+        <? } else { ?>
+          <option value="">パターンがありません</option>
+        <? } ?>
+      </select>
+    </div>
+
+    <button type="submit" id="btn">登録を確定する</button>
+    <div class="loader" id="loader"></div>
+  </form>
+
+  <div id="msg"></div>
+</div>
+
+<script>
+  const form = document.getElementById('shiftForm');
+  const btn = document.getElementById('btn');
+  const loader = document.getElementById('loader');
+  const msgDiv = document.getElementById('msg');
+
+  // 初期値設定
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('startDate').value = today;
+  document.getElementById('endDate').value = today;
+
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    
+    const data = {
+      userId: document.getElementById('userId').value,
+      startDate: document.getElementById('startDate').value,
+      endDate: document.getElementById('endDate').value,
+      patternIdx: document.getElementById('patternIdx').value
+    };
+
+    if (new Date(data.startDate) > new Date(data.endDate)) {
+      showMsg('開始日は終了日より前にしてください。', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    loader.style.display = 'block';
+    msgDiv.style.display = 'none';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        loader.style.display = 'none';
+        if(res.success) {
+          showMsg('登録が完了しました！LINE画面を閉じて戻ってください。', 'success');
+          form.reset();
+        } else {
+          showMsg('エラー: ' + res.message, 'error');
+        }
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        loader.style.display = 'none';
+        showMsg('通信エラーが発生しました。', 'error');
+      })
+      .submitShift(data);
+  };
+
+  function showMsg(t, c) {
+    msgDiv.innerText = t;
+    msgDiv.className = c;
+    msgDiv.style.display = 'block';
+  }
+</script>
+
+</body>
+</html>
