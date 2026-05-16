@@ -15,7 +15,7 @@ const CONFIG = {
   SPREADSHEET_URL : 'https://docs.google.com/spreadsheets/d/15mdta0mkqDjYBBfcaC7-hf7PxTVa9tB5MibpOqC7WsM/edit?gid=758095427#gid=758095427',
 
   // ❷ LINE チャネルアクセストークン
-  LINE_TOKEN      : 'XZdwKywZuat4tTwovPnnNyoAk7Ula5UBCyZqIPEZOIYVx0/d/Ud/DWdGAHNvqxaUvX7y96R6veEMpAqNUMRz0U2Qb9M2Z2SrQmOiOGg69OdOAuSBsWtMSJIn8dH/sAKPUJbR5WLgh6FifDeZlTb7pQdB04t89/1O/w1cDnyilFU=',
+  LINE_TOKEN      : '', // セキュリティ保護のため 90_Secrets/secrets.json へ移動済み
 
   // ❸ 通知を送りたいグループ ID
   ADMIN_GROUP_ID  : 'C8ec7f01e98cfb835411b55c04c816417',
