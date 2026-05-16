@@ -1,0 +1,28 @@
+You are Google Antigravity. Create a "Web-based Interactive Portfolio" that mimics a LINE bot interface (but runs in a browser).
+
+MISSION
+- Goal: Create a single-page portfolio where users click "Industry Buttons" (e.g., Cafe, Salon, EC) to filter and see relevant "Harness-generated" images.
+- Final Deliverables: 
+    1. A clean, mobile-optimized HTML/CSS/JS code.
+    2. A "Grid Layout" that displays images based on the selected category.
+    3. A smooth animation for switching categories.
+
+CONTEXT
+- Concept: "In-Browser Portfolio Bot."
+- Usage: Job application -> Click URL -> Land on this page -> Direct interaction.
+- Requirement: NO LINE login. Immediate access.
+
+SCOPE
+- In scope: Filter logic (Javascript), Mobile-first design, Category buttons.
+- Out of scope: Backend database (use hardcoded image URLs for now).
+
+PLAN
+1. Design a sticky header with the message: "Select your industry to see matching results."
+2. Create button components for: [Cafe], [Beauty], [Real Estate], [General].
+3. Implement a JS function `showPortfolio(category)` to toggle visibility of image groups.
+4. Add a "Contact me" button that leads to your email or direct message.
+
+EXECUTION REQUIREMENTS
+- Output: A single HTML file code (Internal CSS/JS) for easy deployment (e.g., on GitHub Pages or Vercel).
+- Style: Minimalist, professional, high-speed loading.
+

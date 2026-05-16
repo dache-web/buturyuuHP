@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ニコニコキッズ歯科医院 - 初回問診票</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo-container">
+            <div class="logo-icon">🦷</div>
+            <h1>ニコニコキッズ歯科医院</h1>
+        </div>
+        <p class="subtitle">はじめての問診票（もんしんひょう）</p>
+    </header>
+
+    <main class="container">
+        <!-- ===== 入力フォーム ===== -->
+        <div id="form-section">
+            <form id="questionnaire-form">
+                
+                <!-- 基本情報 -->
+                <section class="question-card">
+                    <div class="question-header">
+                        <span class="q-num">📋</span>
+                        <h2>基本情報をご記入ください</h2>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">お名前（漢字フルネーム）</label>
+                        <input type="text" name="name_kanji" class="text-input" placeholder="例：山田 太郎" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">お名前（フリガナ）</label>
+                        <input type="text" name="name_kana" class="text-input" placeholder="例：ヤマダ タロウ" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">生年月日</label>
+                        <div class="dob-group">
+                            <div class="select-wrapper">
+                                <select name="dob_year" id="dob_year" required>
+                                    <option value="" disabled selected>年</option>
+                                    <!-- JSで追加 -->
+                                </select>
+                            </div>
+                            <div class="select-wrapper">
+                                <select name="dob_month" id="dob_month" required>
+                                    <option value="" disabled selected>月</option>
+                                    <!-- JSで追加 -->
+                                </select>
+                            </div>
+                            <div class="select-wrapper">
+                                <select name="dob_day" id="dob_day" required>
+                                    <option value="" disabled selected>日</option>
+                                    <!-- JSで追加 -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">電話番号（ハイフンなし）</label>
+                        <input type="tel" name="phone" class="text-input" placeholder="例：09012345678" pattern="^[0-9]+$" required title="ハイフンなしで入力してください">
+                    </div>
+                </section>
+
+                <!-- Q1 -->
+                <section class="question-card">
+                    <div class="question-header">
+                        <span class="q-num">Q1</span>
+                        <h2>当院は初めてですか？</h2>
+                    </div>
+                    <div class="options-container radio-group">
+                        <label class="custom-radio">
+                            <input type="radio" name="first_visit" value="はい（はじめて）" required>
+                            <span class="radio-mark"></span>
+                            <span class="label-text">はい（はじめて）</span>
+                        </label>
+                        <label class="custom-radio">
+                            <input type="radio" name="first_visit" value="いいえ（きたことがある）">
+                            <span class="radio-mark"></span>
+                            <span class="label-text">いいえ（きたことがある）</span>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- Q2 -->
+                <section class="question-card">
+                    <div class="question-header">
+                        <span class="q-num">Q2</span>
+                        <h2>今日はどうなさいましたか？<span class="badge">複数選択可</span></h2>
+                    </div>
+                    <div class="options-container checkbox-group">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="reason" value="むしばの治療">
+                            <span class="check-mark"></span>
+                            <span class="label-text">むしばの治療（ちりょう）</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="reason" value="定期検診">
+                            <span class="check-mark"></span>
+                            <span class="label-text">定期検診（ていきけんしん）</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="reason" value="歯のクリーニング・フッ素">
+                            <span class="check-mark"></span>
+                            <span class="label-text">歯のクリーニング・フッ素</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="reason" value="歯並びの相談">
+                            <span class="check-mark"></span>
+                            <span class="label-text">歯並び（はならび）の相談</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="reason" value="その他" id="reason-other-check">
+                            <span class="check-mark"></span>
+                            <span class="label-text">その他</span>
+                        </label>
+                    </div>
+                    <div class="conditional-input" id="reason-other-input-container">
+                        <textarea name="reason_other_text" placeholder="具体的な内容をご記入ください" rows="2"></textarea>
+                    </div>
+                </section>
+
+                <!-- Q3 -->
+                <section class="question-card">
+                    <div class="question-header">
+                        <span class="q-num">Q3</span>
+                        <h2>いつから痛いですか？（気になるのはいつからですか？）</h2>
+                    </div>
+                    <div class="options-container radio-group">
+                        <label class="custom-radio">
+                            <input type="radio" name="when_pain" value="今日から">
+                            <span class="radio-mark"></span>
+                            <span class="label-text">今日から</span>
+                        </label>
+                        <label class="custom-radio">
+                            <input type="radio" name="when_pain" value="数日前から">
+                            <span class="radio-mark"></span>
+                            <span class="label-text">数日前から</span>
+                        </label>
+                        <label class="custom-radio">
+                            <input type="radio" name="when_pain" value="1週間以上前から">
+                            <span class="radio-mark"></span>
+                            <span class="label-text">1週間以上前から</span>
+                        </label>
+                        <label class="custom-radio">
+                            <input type="radio" name="when_pain" value="ずっと前から">
+                            <span class="radio-mark"></span>
+                            <span class="label-text">ずっと前から</span>
+                        </label>
+                        <label class="custom-radio">
+                            <input type="radio" name="when_pain" value="痛くない">
+                            <span class="radio-mark"></span>
+                            <span class="label-text">痛くない（いたくない）</span>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- Q4 -->
+                <section class="question-card">
+                    <div class="question-header">
+                        <span class="q-num">Q4</span>
+                        <h2>痛みの程度と、気になる箇所を教えてください</h2>
+                    </div>
+                    <div class="slider-container">
+                        <label for="pain-level" class="slider-label">痛みの程度（<span id="pain-value">0</span> / 10）</label>
+                        <input type="range" id="pain-level" name="pain_level" min="0" max="10" value="0" class="custom-slider">
+                        
+                        <!-- 目盛りを追加 -->
+                        <div class="slider-ticks">
+                            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+                        </div>
+                        
+                        <div class="pain-scale-labels">
+                            <span>痛くない</span>
+                            <span>がまんできる</span>
+                            <span>とても痛い</span>
+                        </div>
+                    </div>
+                    <h3 class="sub-question">気になる箇所はどこですか？<span class="badge">複数選択可</span></h3>
+                    <div class="options-container checkbox-group grid-2col">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="pain_area" value="右上の歯">
+                            <span class="check-mark"></span><span class="label-text">右上の歯</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="pain_area" value="左上の歯">
+                            <span class="check-mark"></span><span class="label-text">左上の歯</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="pain_area" value="右下の歯">
+                            <span class="check-mark"></span><span class="label-text">右下の歯</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="pain_area" value="左下の歯">
+                            <span class="check-mark"></span><span class="label-text">左下の歯</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="pain_area" value="前歯">
+                            <span class="check-mark"></span><span class="label-text">前歯（まえば）</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="pain_area" value="歯ぐき">
+                            <span class="check-mark"></span><span class="label-text">歯ぐき</span>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- Q5 -->
+                <section class="question-card">
+                    <div class="question-header">
+                        <span class="q-num">Q5</span>
+                        <h2>現在治療中、または過去にかかった病気はありますか？</h2>
+                    </div>
+                    <div class="options-container radio-group">
+                        <label class="custom-radio">
+                            <input type="radio" name="disease" value="なし" checked>
+                            <span class="radio-mark"></span><span class="label-text">なし</span>
+                        </label>
+                        <label class="custom-radio">
+                            <input type="radio" name="disease" value="あり" id="disease-yes">
+                            <span class="radio-mark"></span><span class="label-text">あり</span>
+                        </label>
+                    </div>
+                    <div class="conditional-input" id="disease-input-container">
+                        <textarea name="disease_text" placeholder="病名をご記入ください" rows="2"></textarea>
+                    </div>
+                </section>
+
+                <!-- Q6 -->
+                <section class="question-card">
+                    <div class="question-header">
+                        <span class="q-num">Q6</span>
+                        <h2>アレルギーはありますか？（お薬、食べ物など）</h2>
+                    </div>
+                    <div class="options-container radio-group">
+                        <label class="custom-radio">
+                            <input type="radio" name="allergy" value="なし" checked>
+                            <span class="radio-mark"></span><span class="label-text">なし</span>
+                        </label>
+                        <label class="custom-radio">
+                            <input type="radio" name="allergy" value="あり" id="allergy-yes">
+                            <span class="radio-mark"></span><span class="label-text">あり</span>
+                        </label>
+                    </div>
+                    <div class="conditional-input" id="allergy-input-container">
+                        <textarea name="allergy_text" placeholder="アレルギーの原因（卵、特定の薬など）をご記入ください" rows="2"></textarea>
+                    </div>
+                </section>
+
+                <!-- Q7 -->
+                <section class="question-card">
+                    <div class="question-header">
+                        <span class="q-num">Q7</span>
+                        <h2>現在、服用中のお薬はありますか？</h2>
+                    </div>
+                    <div class="options-container radio-group">
+                        <label class="custom-radio">
+                            <input type="radio" name="medicine" value="なし" checked>
+                            <span class="radio-mark"></span><span class="label-text">なし</span>
+                        </label>
+                        <label class="custom-radio">
+                            <input type="radio" name="medicine" value="あり" id="medicine-yes">
+                            <span class="radio-mark"></span><span class="label-text">あり（お薬手帳を受付にお出しください）</span>
+                        </label>
+                    </div>
+                    <div class="conditional-input" id="medicine-input-container">
+                        <textarea name="medicine_text" placeholder="お薬の名前をご記入ください" rows="2"></textarea>
+                    </div>
+                </section>
+
+                <!-- Q8 -->
+                <section class="question-card">
+                    <div class="question-header">
+                        <span class="q-num">Q8</span>
+                        <h2>治療へのご希望がありましたら教えてください。<span class="badge">複数選択可</span></h2>
+                    </div>
+                    <div class="options-container checkbox-group">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="request" value="なるべく早く終わらせたい">
+                            <span class="check-mark"></span><span class="label-text">なるべく早く終わらせたい</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="request" value="できるだけ痛くないようにしてほしい">
+                            <span class="check-mark"></span><span class="label-text">できるだけ痛くないようにしてほしい</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="request" value="治療内容をしっかり説明してほしい">
+                            <span class="check-mark"></span><span class="label-text">治療内容をしっかり説明してほしい</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="request" value="保険の範囲内で治療してほしい">
+                            <span class="check-mark"></span><span class="label-text">保険の範囲内で治療してほしい</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" name="request" value="その他" id="request-other-check">
+                            <span class="check-mark"></span><span class="label-text">その他（自由記入）</span>
+                        </label>
+                    </div>
+                    <div class="conditional-input" id="request-other-input-container">
+                        <textarea name="request_other_text" placeholder="ご希望をご記入ください" rows="3"></textarea>
+                    </div>
+                </section>
+
+                <div class="submit-container">
+                    <button type="button" class="action-btn primary-btn" id="go-confirm-btn">
+                        <span class="btn-text">入力内容を確認する</span>
+                        <span class="btn-icon">📋</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ===== 確認画面 ===== -->
+        <div id="confirm-section" class="hidden">
+            <div class="question-card confirm-card">
+                <h2 class="confirm-title">この内容でよろしいですか？</h2>
+                
+                <div id="confirm-content" class="confirm-content">
+                    <!-- JavaScriptで内容が挿入されます -->
+                </div>
+                
+                <div class="confirm-actions">
+                    <button type="button" class="action-btn secondary-btn" id="back-edit-btn">
+                        <span class="btn-text">修正する</span>
+                    </button>
+                    <button type="button" class="action-btn submit-btn" id="final-submit-btn">
+                        <span class="btn-text">送信する</span>
+                        <span class="btn-icon">✨</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="success-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-icon">🎉</div>
+            <h2>ありがとうございます！</h2>
+            <p>問診票の送信が完了しました。<br>受付にお声がけください。</p>
+            <button id="close-modal" class="action-btn primary-btn">閉じる</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

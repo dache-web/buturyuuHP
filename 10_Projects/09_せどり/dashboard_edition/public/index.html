@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profit Finder Pro | Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>Profit Finder Pro</h1>
+                <p style="color:var(--apple-sub); margin-top:5px;">Dashboard Edition</p>
+            </div>
+            <div id="date-info" style="text-align:right; font-size:14px; color:var(--apple-sub);">
+                <span id="current-date"></span><br>
+                <a href="/User_Manual.html" target="_blank" style="color:var(--apple-blue); text-decoration:none; font-weight:600; font-size:12px;">📙 操作説明書を開く</a>
+            </div>
+        </header>
+
+        <div id="advice-container" class="advice-card" style="display:none;">
+            <p id="purchase-advice" style="margin:0; font-weight:500;"></p>
+        </div>
+        <div class="card-grid">
+            <div class="card">
+                <h3 style="margin-top:0;">1. データのアップロード</h3>
+                <p style="font-size:14px; color:var(--apple-sub);">買取リストのCSVファイルを選択してください。</p>
+                <input type="file" id="csv-file" accept=".csv">
+                <button id="upload-btn">スキャン開始</button>
+            </div>
+
+            <div class="card settings-card">
+                <h3 style="margin-top:0;">2. ポイント設定</h3>
+                <div style="display:flex; gap:15px;">
+                    <div style="flex:1;">
+                        <label style="font-size:12px; color:var(--apple-sub);">楽天ポイント倍率 (%)</label>
+                        <input type="number" id="rakutenPoint" value="1.2" step="0.1">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:12px; color:var(--apple-sub);">Yahooポイント倍率 (%)</label>
+                        <input type="number" id="yahooPoint" value="1.2" step="0.1">
+                    </div>
+                </div>
+                <div style="margin-top:15px;">
+                    <label style="font-size:12px; color:var(--apple-sub);">指定買取店舗（空欄で全店舗対象）</label>
+                    <input type="text" id="targetShopFilter" placeholder="例: 家電市場, ルデヤ" style="width:100%; box-sizing:border-box;">
+                </div>
+            </div>
+        </div>
+
+        <div id="scan-section" class="scan-progress" style="display:none;">
+            <p id="scan-status" style="font-weight:600; margin:0;">CSVファイルをアップロードしてください</p>
+            <div class="progress-bar-bg">
+                <div id="progress-fill" class="progress-bar-fill"></div>
+            </div>
+            <p style="font-size:12px; color:var(--apple-sub); margin-top:8px;">
+                API負荷軽減のため、1件ずつ丁寧にお調べしています。
+            </p>
+        </div>
+
+
+        <div id="results-section" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0;">お宝商品リスト</h3>
+                <span id="result-count" style="font-size:14px; color:var(--apple-sub);"></span>
+            </div>
+            
+            <div class="main-layout">
+                <div class="table-container">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>商品情報</th>
+                                <th>仕入元</th>
+                                <th style="text-align:right;">買取額</th>
+                                <th style="text-align:right;">販売額</th>
+                                <th style="text-align:right;">利益 / ROI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body">
+                            <!-- Data here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- サイドバー: ランキングと詳細計算 -->
+                <div id="details-sidebar" class="sidebar">
+                    <div class="sidebar-content">
+                        <button id="close-sidebar" class="close-btn">&times;</button>
+                        <div id="sidebar-inner">
+                            <p style="color:var(--apple-sub); text-align:center; margin-top:50px;">
+                                商品を選択すると詳細が表示されます
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+/* 究極のプレミアムWebデモ・スタイルシート */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@300;400;700&display=swap');
+
+:root {
+  --primary: #ff758c;
+  --secondary: #ff7eb3;
+  --accent: #4834d4;
+  --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  --glass: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --text-dark: #2d3436;
+  --text-muted: #636e72;
+  --shadow-premium: 0 20px 50px rgba(0, 0, 0, 0.1);
+  --msg-bot: #ffffff;
+  --msg-user: #4834d4;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+  background: var(--bg-gradient);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  color: var(--text-dark);
+}
+
+#app-container {
+  width: 95%;
+  max-width: 900px;
+  height: 85vh;
+  background: var(--glass);
+  backdrop-filter: blur(30px);
+  border: 1px solid var(--glass-border);
+  border-radius: 40px;
+  box-shadow: var(--shadow-premium);
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  animation: appAppear 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes appAppear {
+  0% { opacity: 0; transform: scale(0.95) translateY(30px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* サイドバー（履歴表示用など） */
+aside {
+  width: 280px;
+  background: rgba(255, 255, 255, 0.3);
+  border-right: 1px solid var(--glass-border);
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.brand-info h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(to right, #4834d4, #ff7eb3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #27ae60;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background: #27ae60;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* メインチャットエリア */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+header {
+  padding: 30px 40px;
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bot-profile {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.avatar {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+  border-radius: 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1.2rem;
+  box-shadow: 0 10px 20px rgba(255, 117, 140, 0.3);
+}
+
+#chat-window {
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  scroll-behavior: smooth;
+}
+
+/* メッセージバブル */
+.msg {
+  max-width: 80%;
+  padding: 20px 25px;
+  border-radius: 25px;
+  font-size: 1rem;
+  line-height: 1.6;
+  position: relative;
+  transition: all 0.4s ease;
+}
+
+.bot-msg {
+  align-self: flex-start;
+  background: #fff;
+  color: var(--text-dark);
+  border-bottom-left-radius: 5px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+  animation: msgSlideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.user-msg {
+  align-self: flex-end;
+  background: var(--msg-user);
+  color: #fff;
+  border-bottom-right-radius: 5px;
+  box-shadow: 0 15px 35px rgba(72, 52, 212, 0.3);
+  animation: msgSlideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes msgSlideInLeft {
+  0% { opacity: 0; transform: translateX(-20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes msgSlideInRight {
+  0% { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* 選択メッセージ（前の選択肢） */
+.history-choice {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.history-choice::before, .history-choice::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--glass-border);
+}
+
+/* オプションボタン・コントロール */
+.controls {
+  padding: 30px 40px;
+  background: rgba(255, 255, 255, 0.4);
+  border-top: 1px solid var(--glass-border);
+}
+
+#options-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.opt-btn {
+  background: #fff;
+  border: 1px solid var(--glass-border);
+  padding: 12px 24px;
+  border-radius: 15px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.opt-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(72, 52, 212, 0.2);
+}
+
+.input-area {
+  display: flex;
+  gap: 15px;
+}
+
+#user-input {
+  flex: 1;
+  height: 60px;
+  background: #fff;
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 0 25px;
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+#user-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(72, 52, 212, 0.05);
+}
+
+#send-btn {
+  width: 60px;
+  height: 60px;
+  background: var(--accent);
+  border: none;
+  border-radius: 20px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#send-btn:hover {
+  transform: scale(1.05) rotate(5deg);
+}
+
+/* 思考エフェクト */
+#thinking-bar {
+  display: none;
+  padding: 0 40px 10px;
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: bold;
+  font-style: italic;
+}
+
+.loader {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

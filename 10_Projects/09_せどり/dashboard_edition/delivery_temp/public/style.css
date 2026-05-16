@@ -1,0 +1,441 @@
+:root {
+    --apple-bg: #F5F5F7;
+    --apple-card: #FFFFFF;
+    --apple-text: #1D1D1F;
+    --apple-sub: #86868B;
+    --apple-blue: #0071E3;
+    --apple-green: #28CD41;
+    --apple-orange: #FF9F0A;
+    --radius: 18px;
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--apple-bg);
+    color: var(--apple-text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+header {
+    margin-bottom: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+h1 {
+    font-size: 34px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.advice-card {
+    background: linear-gradient(135deg, #0071E3, #40A9FF);
+    color: white;
+    padding: 20px;
+    border-radius: var(--radius);
+    margin-bottom: 30px;
+    box-shadow: 0 10px 20px rgba(0,113,227,0.15);
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.card {
+    background: var(--apple-card);
+    padding: 24px;
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+}
+
+.settings-card {
+    grid-column: span 1;
+}
+
+input[type="number"], input[type="file"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #D2D2D7;
+    border-radius: 10px;
+    font-size: 16px;
+    margin-top: 8px;
+}
+
+button {
+    background-color: var(--apple-blue);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 20px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    width: 100%;
+    margin-top: 15px;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+.scan-progress {
+    margin: 30px 0;
+    text-align: center;
+}
+
+.progress-bar-bg {
+    background: #E5E5E7;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
+.progress-bar-fill {
+    background: var(--apple-blue);
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Table Style */
+.results-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+}
+
+.results-table th {
+    text-align: left;
+    padding: 15px;
+    color: var(--apple-sub);
+    font-weight: 500;
+}
+
+.result-row {
+    background: var(--apple-card);
+    transition: box-shadow 0.2s;
+}
+
+.result-row td {
+    padding: 20px 15px;
+}
+
+.result-row td:first-child { border-radius: 14px 0 0 14px; }
+.result-row td:last-child { border-radius: 0 14px 14px 0; }
+
+.roi-badge {
+    background: rgba(40, 205, 65, 0.1);
+    color: var(--apple-green);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.warning-badge {
+    color: var(--apple-orange);
+    font-size: 12px;
+    display: block;
+    margin-top: 5px;
+}
+
+.profit-negative {
+    color: #FF3B30 !important;
+}
+
+.external-link {
+    color: var(--apple-blue);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.ranking-card {
+    background: #FFF;
+    padding: 20px;
+    border-radius: var(--radius);
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.number-circle {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    background: var(--apple-text);
+    color: white;
+    border-radius: 12px;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    margin-right: 10px;
+}
+
+/* Layout */
+.main-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.table-container {
+    flex: 1;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 350px;
+    background: var(--apple-card);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 20px;
+    height: calc(100vh - 40px);
+    overflow-y: auto;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.sidebar-content {
+    padding: 24px;
+    position: relative;
+}
+
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--apple-sub);
+    cursor: pointer;
+    width: auto;
+    margin: 0;
+    padding: 0;
+}
+
+/* Premium Sidebar Styles */
+.detail-header {
+    margin-bottom: 25px;
+    border-bottom: 2px solid #F2F2F7;
+    padding-bottom: 15px;
+}
+
+.detail-header h3 {
+    font-size: 18px;
+    margin: 0 0 8px 0;
+    color: var(--apple-text);
+}
+
+.product-title {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--apple-text);
+}
+
+.product-jan {
+    font-size: 12px;
+    color: var(--apple-sub);
+    margin-top: 4px;
+}
+
+.detail-section {
+    margin-bottom: 30px;
+}
+
+.section-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--apple-text);
+}
+
+.detail-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid #E5E5EA;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.shop-label {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.price-value.highlight {
+    color: var(--apple-blue);
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.simulation-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid #E5E5EA;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.sim-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.sim-row span:first-child {
+    color: var(--apple-sub);
+}
+
+.sim-row .val {
+    font-weight: 600;
+}
+
+.profit-display-container {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px dashed #D1D1D6;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.profit-box-item {
+    background: #F2F2F7;
+    padding: 12px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.profit-box-item.highlight {
+    background: #E8F2FF;
+    border: 1px solid rgba(0, 113, 227, 0.2);
+}
+
+.profit-box-item .label {
+    font-size: 11px;
+    color: var(--apple-sub);
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.profit-box-item .val {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--apple-text);
+}
+
+.ranking-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #F2F2F7;
+}
+
+.rank-badge {
+    width: 24px;
+    height: 24px;
+    background: #F2F2F7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--apple-sub);
+}
+
+.ranking-item:first-child .rank-badge {
+    background: #007AFF;
+    color: white;
+}
+
+.rank-shop {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rank-price {
+    font-size: 14px;
+    color: var(--apple-blue);
+    font-weight: 700;
+}
+
+.order-btn {
+    display: inline-block;
+    background: var(--apple-blue);
+    color: white;
+    padding: 14px 30px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 15px;
+    transition: transform 0.2s ease;
+}
+
+.order-btn:hover {
+    transform: scale(1.05);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 20px;
+    background: #F2F2F7;
+    border-radius: 12px;
+    color: var(--apple-sub);
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.empty-state small {
+    font-size: 11px;
+}
+
+.inline-link {
+    color: var(--apple-blue);
+    text-decoration: none;
+    font-size: 12px;
+}
+
+@media (max-width: 1000px) {
+    .main-layout {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        position: static;
+        height: auto;
+    }
+}

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Concierge | Premium Online Store</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- サイドバー：インテリジェンスの演出 -->
+        <aside>
+            <div class="brand-info">
+                <h2>AI Concierge</h2>
+                <p>Designed for Excellence</p>
+            </div>
+            
+            <div class="status-card">
+                <div class="status-badge">
+                    <span class="dot"></span>
+                    <span>System Online</span>
+                </div>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 10px;">
+                    Powered by Yu Logic Engine v2.0<br>
+                    10x3x3 Multi-turn Branching
+                </p>
+            </div>
+
+            <div class="history-preview" style="flex: 1; border-top: 1px solid var(--glass-border); padding-top: 20px;">
+                <p style="font-size: 0.8rem; font-weight: bold; margin-bottom: 10px;">対和分析モード</p>
+                <div id="analysis-log" style="font-size: 0.65rem; color: var(--accent); font-family: monospace;">
+                    > System Initialized...<br>
+                    > Bot Persona "優" Loaded.<br>
+                    > Waiting for context...
+                </div>
+            </div>
+        </aside>
+
+        <!-- メインチャット -->
+        <main>
+            <header>
+                <div class="bot-profile">
+                    <div class="avatar">優</div>
+                    <div>
+                        <h4 style="margin: 0;">担当：優（ゆう）</h4>
+                        <span style="font-size: 0.7rem; color: #27ae60;">● 現在オンライン</span>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="opt-btn" onclick="location.reload()" style="padding: 8px 15px; font-size: 0.7rem;">リセット</button>
+                </div>
+            </header>
+
+            <div id="chat-window">
+                <!-- メッセージがここに動的に追加されます -->
+            </div>
+
+            <div id="thinking-bar">
+                <span class="loader"></span>
+                <span id="thinking-text">優が思考中...</span>
+            </div>
+
+            <div class="controls">
+                <!-- カテゴリー・選択肢ボタン -->
+                <div id="options-container">
+                    <!-- ここにボタンが動的に追加されます -->
+                </div>
+
+                <div class="input-area">
+                    <input type="text" id="user-input" placeholder="質問を入力、または選択肢を選んでください..." onkeypress="handleEnter(event)">
+                    <button id="send-btn" onclick="sendMessage()">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- データとスクリプトの読み込み -->
+    <script src="04_Data/dialogue_tree.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

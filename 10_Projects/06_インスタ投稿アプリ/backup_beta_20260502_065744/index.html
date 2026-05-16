@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SNS発信内容作成アプリ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <nav class="top-nav">
+        <a href="index.html" class="nav-link active">投稿作成</a>
+        <a href="profile.html" class="nav-link">口調学習</a>
+      </nav>
+      <h1>SNS発信内容作成</h1>
+      <p>発信したいことから、投稿テーマ・本文・ハッシュタグ・画像生成プロンプトまで作成します</p>
+    </header>
+
+    <section class="card" aria-label="入力フォーム">
+      <div class="form-group">
+        <label for="apiKey">OpenAI APIキー (必須)</label>
+        <input type="password" id="apiKey" placeholder="sk-...">
+        <p class="hint">APIキーはこの端末に保存しません。</p>
+      </div>
+
+      <div class="form-group">
+        <label for="referenceImage">参考画像アップロード (任意)</label>
+        <input type="file" id="referenceImage" accept="image/*">
+        <div id="imagePreviewArea" class="preview-area" style="display: none;">
+          <img id="imagePreview" src="" alt="参考画像プレビュー">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="messageIdea">何を発信したいか</label>
+        <textarea id="messageIdea" rows="4" placeholder="例: 乾燥肌に悩む人に、保湿ケアの大切さと商品の魅力を伝えたい。まだ具体的な投稿内容は決まっていない。"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="platform">発信先</label>
+          <select id="platform">
+            <option value="Instagramフィード">Instagramフィード</option>
+            <option value="Instagramリール">Instagramリール</option>
+            <option value="Instagramストーリー">Instagramストーリー</option>
+            <option value="YouTubeサムネイル">YouTubeサムネイル</option>
+            <option value="X投稿">X投稿</option>
+          </select>
+        </div>
+        <div class="form-group half">
+          <label for="genre">ジャンル</label>
+          <select id="genre">
+            <option value="美容">美容</option>
+            <option value="ビジネス">ビジネス</option>
+            <option value="グルメ">グルメ</option>
+            <option value="教育">教育</option>
+            <option value="エンタメ">エンタメ</option>
+            <option value="ライフスタイル">ライフスタイル</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="targetAudience">届けたい相手</label>
+          <select id="targetAudience">
+            <option value="まだ明確でない一般層">まだ明確でない一般層</option>
+            <option value="20〜30代女性">20〜30代女性</option>
+            <option value="30〜40代女性">30〜40代女性</option>
+            <option value="ファミリー層">ファミリー層</option>
+            <option value="ビジネス層">ビジネス層</option>
+            <option value="学生">学生</option>
+            <option value="趣味・推し活層">趣味・推し活層</option>
+          </select>
+        </div>
+        <div class="form-group half">
+          <label for="tone">文体・トーン</label>
+          <select id="tone">
+            <option value="親しみやすい">親しみやすい</option>
+            <option value="プロフェッショナル">プロフェッショナル</option>
+            <option value="カジュアル">カジュアル</option>
+            <option value="高級感">高級感</option>
+            <option value="共感重視">共感重視</option>
+            <option value="強めの訴求">強めの訴求</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="mustInclude">必ず入れたい言葉・商品名</label>
+        <input type="text" id="mustInclude" placeholder="例: セラミド、敏感肌、プレミアム保湿クリーム">
+      </div>
+
+      <div class="form-group">
+        <label for="writingSample">普段の文章サンプル (任意)</label>
+        <textarea id="writingSample" rows="3" placeholder="普段の投稿文や、寄せたい文体の文章を貼ってください。口調学習ページで保存した内容も自動で反映されます。"></textarea>
+        <p id="profileStatus" class="hint">保存済みの口調プロフィールはありません。</p>
+      </div>
+
+      <div class="form-group">
+        <label for="extraNotes">避けたい表現・追加要望</label>
+        <textarea id="extraNotes" rows="3" placeholder="例: 煽りすぎない。薬機法に触れそうな断定表現は避けたい。文字は大きく読みやすく。"></textarea>
+      </div>
+
+      <button id="generateBtn" class="primary-btn">発信内容を作成する</button>
+    </section>
+
+    <section id="loadingArea" class="loading-area" style="display: none;" aria-live="polite">
+      <div class="spinner"></div>
+      <p>AIが投稿内容を設計中...<br><small>10〜20秒ほどかかります</small></p>
+    </section>
+
+    <section id="resultArea" class="result-area" style="display: none;">
+      <h2>生成結果</h2>
+
+      <div class="result-box">
+        <div class="result-header">
+          <h3>投稿企画</h3>
+          <button class="copy-btn" data-target="planResult">コピー</button>
+        </div>
+        <div id="planResult" class="result-content" contenteditable="true"></div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-header">
+          <h3>画像内に入れる文字</h3>
+          <button class="copy-btn" data-target="visualTextResult">コピー</button>
+        </div>
+        <div id="visualTextResult" class="result-content" contenteditable="true"></div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-header">
+          <h3>画像生成プロンプト</h3>
+          <button class="copy-btn" data-target="imagePromptResult">コピー</button>
+        </div>
+        <div id="imagePromptResult" class="result-content" contenteditable="true"></div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-header">
+          <h3>投稿本文</h3>
+          <button class="copy-btn" data-target="captionResult">コピー</button>
+        </div>
+        <div id="captionResult" class="result-content" contenteditable="true"></div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-header">
+          <h3>ハッシュタグ</h3>
+          <button class="copy-btn" data-target="hashtagResult">コピー</button>
+        </div>
+        <div id="hashtagResult" class="result-content" contenteditable="true"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,420 @@
+/* ========================================================
+   🌟 デザインの基本設定（LINEアプリを完全に再現します！）
+   ======================================================== */
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #e5e5e5; /* パソコンで見たときの外側の背景色 */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* スマホ画面の枠組み */
+.app-container {
+  max-width: 450px; /* パソコンで見てもスマホサイズになるように制限 */
+  margin: 0 auto;
+  height: 100vh;
+  height: 100dvh; /* スマホの画面の高さにぴったり合わせる */
+  display: flex;
+  flex-direction: column;
+  background-color: #8cbac6; /* LINEおなじみの水色のトーク背景 */
+  box-shadow: 0 0 20px rgba(0,0,0,0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ========================================================
+   🌟 画面上部のヘッダー部分
+   ======================================================== */
+.header {
+  background: #ffffff;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  z-index: 10;
+}
+.header-back {
+  font-size: 20px;
+  color: #333;
+  margin-right: 15px;
+  font-weight: bold;
+}
+.header-title {
+  font-weight: bold;
+  font-size: 16px;
+  color: #333;
+}
+
+/* ========================================================
+   🌟 トーク画面（メッセージが流れるエリア）
+   ======================================================== */
+.chat-area {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto; /* 縦にスクロールできるようにする */
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* 吹き出しと吹き出しのすき間 */
+}
+/* スクロールバーはデザインの邪魔になるので見えなくします */
+.chat-area::-webkit-scrollbar { display: none; }
+.chat-area { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* メッセージの枠組み */
+.msg-row {
+  display: flex;
+  width: 100%;
+  align-items: flex-end; /* 時間表記を下で揃えるため */
+}
+.msg-bot {
+  justify-content: flex-start; /* ボット（自分）は左側 */
+}
+.msg-user {
+  justify-content: flex-end; /* ユーザー（お客様）は右側 */
+}
+
+/* ボットのアイコン（顔写真） */
+.avatar {
+  width: 36px;
+  height: 36px;
+  background: white;
+  border-radius: 50%;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+  align-self: flex-start; /* アイコンを上に寄せる */
+}
+
+/* 吹き出しの基本デザイン */
+.bubble {
+  max-width: 75%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  word-wrap: break-word; /* 長い文字でハミ出ないようにする */
+}
+
+/* ボット（左）の白い吹き出し */
+.bot-bubble {
+  background-color: #ffffff;
+  color: #333;
+  border-top-left-radius: 4px; /* ここだけ尖らせて吹き出しっぽくする */
+}
+
+/* ユーザー（右）の緑の吹き出し */
+.user-bubble {
+  background-color: #85e249; /* LINEの緑色 */
+  color: #111;
+  border-top-right-radius: 4px; /* 右上を尖らせる */
+  margin-bottom: 2px;
+}
+
+/* いつ送信されたかの「時間」や「既読」の文字 */
+.msg-time {
+  font-size: 10px;
+  color: #dde8eb; /* 水色背景に馴染む色 */
+  margin: 0 5px 2px 5px;
+  white-space: nowrap;
+}
+
+/* ========================================================
+   🌟 横にスワイプできる「カルーセル（スライド）」のデザイン
+   ======================================================== */
+.carousel-bubble {
+  background: transparent !important; /* 白い背景を消す */
+  box-shadow: none !important;
+  padding: 0 !important;
+  max-width: 85%; /* 画面の85%まで広げる */
+}
+
+/* パソコン用の左右ボタンと土台の設定 */
+.carousel-wrapper {
+  position: relative;
+}
+.scroll-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  font-size: 14px;
+}
+.scroll-btn.prev-btn { left: -10px; }
+.scroll-btn.next-btn { right: 0px; }
+
+/* スマホ操作の時はこのボタンを自動で隠す魔法の設定 */
+@media (hover: none) and (pointer: coarse) {
+  .scroll-btn { display: none; }
+}
+
+.carousel {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto; /* 横スクロールを可能にする */
+  padding-bottom: 5px;
+  scroll-snap-type: x mandatory; /* ピタッと止まるようにする設定 */
+  -webkit-overflow-scrolling: touch; /* スマホで滑らかにスクロール */
+}
+.carousel::-webkit-scrollbar { display: none; }
+
+/* 1枚のカードの設定 */
+.carousel-item {
+  flex: 0 0 85%;
+  background: white;
+  border-radius: 16px;
+  margin-right: 15px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #eee;
+  scroll-snap-align: start;
+}
+.carousel-item img {
+  width: 100%;
+  aspect-ratio: 1/1;
+  object-fit: cover;
+  display: block;
+}
+.carousel-info {
+  padding: 15px;
+  flex: 1;
+}
+.carousel-info h4 { margin: 0; font-size: 14px; color: #333; font-weight: bold; }
+.carousel-info p { margin: 8px 0 0 0; font-size: 12px; color: #666; line-height: 1.5; }
+
+/* インジケーター（● ● ○） */
+.carousel-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  background: #ddd;
+  border-radius: 50%;
+  transition: background 0.3s;
+}
+.dot.active {
+  background: #62A49B;
+}
+
+/* 画像拡大モーダル */
+#imageModal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.95);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+  cursor: zoom-out;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#imageModal img {
+  max-width: 95%;
+  max-height: 85%;
+  border-radius: 12px;
+  transform: scale(0.9);
+  transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+#imageModal.show {
+  display: flex;
+  opacity: 1;
+}
+#imageModal.show img {
+  transform: scale(1);
+}
+
+/* お問い合わせ用の大きなボタン */
+.btn-primary {
+  display: block;
+  text-align: center;
+  background: #06C755; /* LINEのアクティブグリーン */
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+/* ========================================================
+   🌟 画面下部の「リッチメニュー」
+   ======================================================== */
+/* リッチメニューの部分（最初は開いている状態） */
+.rich-menu-area {
+  background: #ffffff;
+  max-height: 220px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+/* トグルで閉じた時の状態 */
+.rich-menu-area.closed {
+  max-height: 0;
+}
+
+/* 3列×2行のグリッド（添付画像のような6マス） */
+.rich-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 110px 110px; /* 縦幅の指定 */
+}
+
+.menu-btn {
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  transition: opacity 0.2s;
+}
+.menu-btn:active {
+  opacity: 0.7; /* 押したときに少し暗く（透明に）する */
+}
+
+/* 添付画像のような「市松模様（交互の色）」を設定 */
+.menu-btn.bg-white {
+  background-color: #ffffff;
+  color: #62A49B; /* 添付画像のティールグリーンに近い色 */
+  border: 1px solid #e0e0e0;
+}
+.menu-btn.bg-teal {
+  background-color: #62A49B;
+  color: #ffffff;
+  border: 1px solid #62A49B;
+}
+
+.menu-icon {
+  font-size: 30px;
+  margin-bottom: 5px;
+}
+
+/* メニューを開いだり閉じたりする黒いツマミ（一番下） */
+.rich-menu-trigger {
+  background: #1a1a1a;
+  padding: 12px;
+  text-align: center;
+  font-size: 14px;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ========================================================
+   🌟 アニメーション（メッセージを下からフワッ！と出す設定）
+   ======================================================== */
+.fade-in-up {
+  animation: fadeInUp 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+@keyframes fadeInUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+.delay-1 { animation-delay: 0.2s; } /* 少し遅れて出る設定 */
+.delay-2 { animation-delay: 0.6s; } /* さらに遅れて出る設定 */
+
+/* ========================================================
+   🌟 編集モード専用スタイル
+   ======================================================== */
+/* 通常時は非表示 */
+.edit-only {
+  display: none !important;
+}
+
+/* 編集モード (.editing クラスが app-container に付与された時) のみ表示 */
+.editing .edit-only {
+  display: flex !important;
+}
+
+/* 削除ボタンを「赤いバッジ」として目立たせる */
+.delete-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 100;
+  background: #f44336;
+  color: white;
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  transition: transform 0.2s;
+}
+.delete-badge:active {
+  transform: scale(0.8);
+}
+
+/* 追加用スライドのスタイル */
+.add-slide-item {
+  flex: 0 0 45% !important;
+  background: #f0f7f6 !important;
+  border: 2px dashed #62A49B !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #62A49B !important;
+  text-align: center;
+  border-radius: 16px;
+  margin-right: 15px;
+  min-height: 100px;
+}
+
+/* 編集中のテキスト背景を少し強調 */
+[contenteditable="true"]:hover {
+  background: #fffbe6;
+  outline: 1px dashed #62A49B;
+}
+
+/* 編集用パネルの競合回避 */
+#editControls {
+  z-index: 3000 !important; /* 確実に最前面へ */
+}
+.editing .chat-area {
+  padding-bottom: 180px !important; /* 編集パネル分の余白 */
+}
+.editing .rich-menu-area, .editing .rich-menu-trigger {
+  opacity: 0.3; /* 編集に集中できるようメニューを薄くする */
+  pointer-events: none; /* 編集モード中はメニューを無効化 */
+}

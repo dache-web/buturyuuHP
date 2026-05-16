@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>RPG職業おみくじ</title>
+
+  <!-- ==================================================
+    ここだけ変更してください
+    APIキーなどは一番上にまとめています
+  ================================================== -->
+  <script>
+    const CONFIG = {
+      GEMINI_API_KEY: "AIzaSyAsHFhNsMmVvqxGew3rjolrH7xTgkbJ_gE",
+      GEMINI_MODEL: "gemini-2.5-flash-lite",
+      GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbzNpxHW3XQFVaYRJ2J7gGYmPTnUHSSXRvRwJZxkel8BG_CTZHKDlUNZy8vvbmZNnGiH/exec"
+    };
+  </script>
+
+  <!-- 画像保存用 -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+      background: linear-gradient(135deg, #111827, #312e81);
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 620px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 30px;
+      margin: 16px 0 8px;
+      letter-spacing: 0.04em;
+    }
+
+    .lead {
+      text-align: center;
+      color: #d1d5db;
+      line-height: 1.7;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .form-card {
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+    }
+
+    label {
+      display: block;
+      margin: 16px 0 8px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 14px;
+      border: 1px solid #4b5563;
+      background: #0f172a;
+      color: #ffffff;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: #facc15;
+      box-shadow: 0 0 0 3px rgba(250,204,21,0.15);
+    }
+
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 15px 18px;
+      border: none;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      color: #ffffff;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+    }
+
+    .save-btn {
+      background: linear-gradient(135deg, #10b981, #2563eb);
+    }
+
+    .retry-btn {
+      background: #374151;
+    }
+
+    .loading {
+      display: none;
+      margin: 20px 0;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(250, 204, 21, 0.12);
+      border: 1px solid rgba(250, 204, 21, 0.35);
+      color: #fde68a;
+      text-align: center;
+      font-weight: bold;
+      line-height: 1.6;
+    }
+
+    .error {
+      display: none;
+      margin-bottom: 18px;
+      padding: 14px;
+      border-radius: 14px;
+      background: #7f1d1d;
+      color: #fee2e2;
+      line-height: 1.6;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    .result-wrapper {
+      display: none;
+    }
+
+    .capture-card {
+      width: 100%;
+      max-width: 560px;
+      margin: 0 auto;
+      background: #050505;
+      border-radius: 26px;
+      overflow: hidden;
+      box-shadow: 0 28px 90px rgba(0,0,0,0.5);
+    }
+
+    .image-stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #000000;
+      overflow: hidden;
+    }
+
+    .image-stage img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 1;
+    }
+
+    .overlay-dark {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      background:
+        linear-gradient(
+          to bottom,
+          rgba(0,0,0,0.02) 0%,
+          rgba(0,0,0,0.06) 55%,
+          rgba(0,0,0,0.18) 100%
+        );
+    }
+
+    .image-error {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      background: #000;
+      color: #fee2e2;
+      padding: 24px;
+      font-size: 16px;
+      line-height: 1.8;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .result-text {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      padding: 24px;
+      text-shadow: 0 3px 10px rgba(0,0,0,0.95);
+    }
+
+    .side-name {
+      position: absolute;
+      left: 52px;
+      top: 44px;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", "MS PMincho", serif;
+      font-size: 46px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #ffffff;
+      -webkit-text-stroke: 1px rgba(15, 23, 42, 0.55);
+      text-shadow:
+        0 2px 8px rgba(0,0,0,0.78),
+        0 0 18px rgba(0,0,0,0.35);
+    }
+
+    .side-job {
+      position: absolute;
+      right: 52px;
+      top: 44px;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", "MS PMincho", serif;
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #ffd54a;
+      -webkit-text-stroke: 1px rgba(60, 20, 0, 0.45);
+      text-shadow:
+        0 2px 8px rgba(0,0,0,0.80),
+        0 0 18px rgba(0,0,0,0.38);
+      max-height: 470px;
+      overflow: hidden;
+    }
+
+    .bottom-panel {
+      position: relative;
+      padding: 22px 22px 24px;
+      background: rgba(0,0,0,0.92);
+      border-top: 1px solid rgba(255,255,255,0.22);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 18px;
+      margin-bottom: 18px;
+      font-size: 16px;
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px dashed rgba(255,255,255,0.24);
+      padding-bottom: 5px;
+    }
+
+    .stat-label {
+      color: #e5e7eb;
+      font-weight: 700;
+    }
+
+    .stat-value {
+      color: #facc15;
+      font-weight: 900;
+      font-size: 17px;
+    }
+
+    .section {
+      margin-top: 13px;
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .section-title {
+      color: #93c5fd;
+      font-weight: 900;
+      margin-bottom: 4px;
+      font-size: 15px;
+    }
+
+    .business-message {
+      color: #fef3c7;
+      font-weight: bold;
+    }
+
+    .debug-path {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #d1d5db;
+      line-height: 1.6;
+      text-align: center;
+      word-break: break-all;
+    }
+
+    .note {
+      margin-top: 14px;
+      color: #9ca3af;
+      font-size: 12px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    @media (max-width: 520px) {
+      body {
+        padding: 14px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .form-card {
+        padding: 20px;
+      }
+
+      .result-text {
+        padding: 16px;
+      }
+
+      .side-name {
+        left: 32px;
+        top: 34px;
+        font-size: 34px;
+      }
+
+      .side-job {
+        right: 32px;
+        top: 34px;
+        font-size: 30px;
+        max-height: 270px;
+      }
+
+      .bottom-panel {
+        padding: 18px 16px 20px;
+      }
+
+      .stats {
+        font-size: 13px;
+        gap: 8px 12px;
+      }
+
+      .stat-value {
+        font-size: 14px;
+      }
+
+      .section {
+        font-size: 13px;
+      }
+
+      .section-title {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <h1>RPG職業おみくじ</h1>
+
+    <p class="lead">
+      名前・性別・年代・職業から、あなたの<br>
+      「RPG世界での裏の職業」を召喚します。
+    </p>
+
+    <div id="errorBox" class="error"></div>
+
+    <section id="formCard" class="form-card">
+      <label for="nameInput">名前</label>
+      <input id="nameInput" type="text" placeholder="例：佐藤 渡" />
+
+      <label for="genderInput">性別</label>
+      <select id="genderInput">
+        <option value="">選択してください</option>
+        <option value="男性">男性</option>
+        <option value="女性">女性</option>
+        <option value="答えない">答えない</option>
+      </select>
+
+      <label for="ageInput">年代</label>
+      <select id="ageInput">
+        <option value="">選択してください</option>
+        <option value="20代">20代</option>
+        <option value="30代">30代</option>
+        <option value="40代">40代</option>
+        <option value="50代">50代</option>
+        <option value="60代">60代</option>
+        <option value="答えない">答えない</option>
+      </select>
+
+      <label for="jobInput">職業</label>
+      <input id="jobInput" type="text" placeholder="例：営業、AIコンサル、デザイナー" />
+
+      <button id="submitBtn" class="primary-btn" type="button">結果を見る</button>
+
+      <p class="note">
+        Gemini APIでテキスト生成します。
+      </p>
+    </section>
+
+    <div id="loading" class="loading">
+      診断中です。<br>
+      あなたの裏職業を召喚しています……
+    </div>
+
+    <section id="resultWrapper" class="result-wrapper">
+      <div id="captureArea" class="capture-card">
+
+        <div class="image-stage">
+          <img id="resultImage" src="" alt="" />
+          <div class="overlay-dark"></div>
+
+          <div id="imageError" class="image-error"></div>
+
+          <div class="result-text">
+            <div id="resultName" class="side-name"></div>
+            <div id="resultSecretJob" class="side-job"></div>
+          </div>
+        </div>
+
+        <div class="bottom-panel">
+          <div id="statsArea" class="stats"></div>
+
+          <div class="section">
+            <div class="section-title">必殺技</div>
+            <div id="specialMove"></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">運勢</div>
+            <div id="fortune"></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">ビジネスメッセージ</div>
+            <div id="businessMessage" class="business-message"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="debugPath" class="debug-path"></div>
+
+      <button id="saveBtn" class="save-btn" type="button">画像を保存する</button>
+      <button id="retryBtn" class="retry-btn" type="button">もう一度やる</button>
+    </section>
+  </main>
+
+  <script>
+    const submitBtn = document.getElementById("submitBtn");
+    const saveBtn = document.getElementById("saveBtn");
+    const retryBtn = document.getElementById("retryBtn");
+
+    const formCard = document.getElementById("formCard");
+    const loading = document.getElementById("loading");
+    const resultWrapper = document.getElementById("resultWrapper");
+    const errorBox = document.getElementById("errorBox");
+
+    const nameInput = document.getElementById("nameInput");
+    const genderInput = document.getElementById("genderInput");
+    const ageInput = document.getElementById("ageInput");
+    const jobInput = document.getElementById("jobInput");
+
+    const resultImage = document.getElementById("resultImage");
+    const imageError = document.getElementById("imageError");
+    const resultName = document.getElementById("resultName");
+    const resultSecretJob = document.getElementById("resultSecretJob");
+    const statsArea = document.getElementById("statsArea");
+    const specialMove = document.getElementById("specialMove");
+    const fortune = document.getElementById("fortune");
+    const businessMessage = document.getElementById("businessMessage");
+    const debugPath = document.getElementById("debugPath");
+
+    let latestResultPayload = null;
+
+    submitBtn.addEventListener("click", handleSubmit);
+    saveBtn.addEventListener("click", handleSaveImage);
+    retryBtn.addEventListener("click", resetApp);
+
+    window.addEventListener("error", function(event) {
+      showError("画面側でエラーが発生しました。\n\n" + event.message);
+    });
+
+    window.addEventListener("unhandledrejection", function(event) {
+      const message = event.reason && event.reason.message
+        ? event.reason.message
+        : String(event.reason);
+      showError("通信または生成処理でエラーが発生しました。\n\n" + message);
+    });
+
+    async function handleSubmit() {
+      hideError();
+
+      const name = nameInput.value.trim();
+      const gender = genderInput.value;
+      const age = ageInput.value;
+      const originalJob = jobInput.value.trim();
+
+      if (!name || !gender || !age || !originalJob) {
+        showError("名前、性別、年代、職業をすべて入力してください。");
+        return;
+      }
+
+      if (!CONFIG.GEMINI_API_KEY || CONFIG.GEMINI_API_KEY === "ここにGemini APIキーを貼る") {
+        showError("Gemini APIキーが入っていません。\n\nindex.htmlの一番上にある CONFIG.GEMINI_API_KEY にキーを入れてください。");
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        const selectedImageFile = chooseImageFile(gender, age);
+
+        const aiResult = await generateFortuneTextWithGemini({
+          name,
+          gender,
+          age,
+          originalJob
+        });
+
+        renderResult({
+          name,
+          selectedImageFile,
+          aiResult
+        });
+
+        latestResultPayload = {
+          createdAt: new Date().toISOString(),
+          name,
+          gender,
+          age,
+          originalJob,
+          selectedImageFile,
+          secretJob: aiResult.secretJob,
+          stats: aiResult.stats,
+          specialMove: aiResult.specialMove,
+          fortune: aiResult.fortune,
+          businessMessage: aiResult.businessMessage,
+          rawResult: aiResult
+        };
+
+        sendResultToGas(latestResultPayload);
+
+        formCard.style.display = "none";
+        resultWrapper.style.display = "block";
+
+      } catch (error) {
+        console.error(error);
+        showError(
+          "生成に失敗しました。\n\n" +
+          "原因候補：\n" +
+          "1. Gemini APIキーが間違っている\n" +
+          "2. Gemini APIキーがまだ有効化されていない\n" +
+          "3. ブラウザからのAPI通信が拒否されている\n" +
+          "4. モデル名が利用できない\n\n" +
+          "詳細：\n" + error.message
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function chooseImageFile(gender, age) {
+      const randomNumber = Math.floor(Math.random() * 10) + 1;
+
+      if (gender === "答えない" || age === "答えない") {
+        return `./images/joke_${randomNumber}.jpg`;
+      }
+
+      const isYoung = age === "20代" || age === "30代";
+      const isVeteran = age === "40代" || age === "50代" || age === "60代";
+
+      if (gender === "男性" && isYoung) {
+        return `./images/male_young_${randomNumber}.jpg`;
+      }
+
+      if (gender === "男性" && isVeteran) {
+        return `./images/male_vet_${randomNumber}.jpg`;
+      }
+
+      if (gender === "女性" && isYoung) {
+        return `./images/female_young_${randomNumber}.jpg`;
+      }
+
+      if (gender === "女性" && isVeteran) {
+        return `./images/female_vet_${randomNumber}.jpg`;
+      }
+
+      return `./images/joke_${randomNumber}.jpg`;
+    }
+
+    async function generateFortuneTextWithGemini(userData) {
+      const prompt = `
+あなたはRPG風の職業おみくじ診断士です。
+以下のユーザー情報をもとに、明るく前向きな診断結果を作ってください。
+
+【ユーザー情報】
+名前：${userData.name}
+性別：${userData.gender}
+年代：${userData.age}
+現実の職業：${userData.originalJob}
+
+【生成する内容】
+1. 裏の職業
+2. ステータス5つ
+3. 必殺技
+4. 運勢
+5. ビジネスメッセージ
+
+【重要ルール】
+- ネガティブ表現は禁止
+- 皮肉は禁止
+- 怖すぎる表現は禁止
+- ステータス名は前向きな言葉にする
+- ステータス数値は1〜9999
+- 1:1画像に載せるため、全体的に短めにする
+- 裏の職業は長すぎない言葉にする
+- 必ずJSONのみで返す
+- Markdownは禁止
+- コードブロックは禁止
+
+【JSON形式】
+{
+  "secretJob": "裏の職業名",
+  "stats": [
+    {"label": "ステータス名", "value": 9999},
+    {"label": "ステータス名", "value": 9999},
+    {"label": "ステータス名", "value": 9999},
+    {"label": "ステータス名", "value": 9999},
+    {"label": "ステータス名", "value": 9999}
+  ],
+  "specialMove": "必殺技名と短い説明",
+  "fortune": "今日から意識すると良い前向きな運勢",
+  "businessMessage": "仕事に活かせる短いメッセージ"
+}
+`;
+
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.GEMINI_MODEL}:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.9,
+            responseMimeType: "application/json"
+          }
+        })
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        let apiMessage = responseText;
+
+        try {
+          const errorJson = JSON.parse(responseText);
+          apiMessage = errorJson.error && errorJson.error.message
+            ? errorJson.error.message
+            : responseText;
+        } catch (e) {}
+
+        throw new Error("Gemini API error: " + apiMessage);
+      }
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error("Geminiの返答をJSONとして読めませんでした。");
+      }
+
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!content) {
+        throw new Error("Geminiから文章が返ってきませんでした。");
+      }
+
+      const cleaned = content
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+
+      let parsed;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (e) {
+        throw new Error("Geminiの診断結果JSONを読めませんでした。\n\n返答内容：\n" + cleaned);
+      }
+
+      return normalizeAiResult(parsed);
+    }
+
+    function normalizeAiResult(result) {
+      const fallbackStats = [
+        { label: "発想力", value: 7777 },
+        { label: "行動力", value: 7777 },
+        { label: "信頼力", value: 7777 },
+        { label: "突破力", value: 7777 },
+        { label: "継続力", value: 7777 }
+      ];
+
+      const stats = Array.isArray(result.stats)
+        ? result.stats.slice(0, 5)
+        : fallbackStats;
+
+      while (stats.length < 5) {
+        stats.push(fallbackStats[stats.length]);
+      }
+
+      return {
+        secretJob: String(result.secretJob || "未来冒険者").slice(0, 12),
+        stats: stats.map((stat, index) => {
+          const label = String(stat.label || fallbackStats[index].label).slice(0, 8);
+          const rawValue = Number(stat.value || fallbackStats[index].value);
+          const value = Math.max(1, Math.min(9999, Math.floor(rawValue)));
+
+          return {
+            label,
+            value
+          };
+        }),
+        specialMove: String(result.specialMove || "未来突破：迷いを断ち切り一歩進む").slice(0, 42),
+        fortune: String(result.fortune || "今日は小さな行動が大きな流れを作る日です。").slice(0, 46),
+        businessMessage: String(result.businessMessage || "あなたの強みは、次の一歩を形にする力です。").slice(0, 46)
+      };
+    }
+
+    function renderResult({ name, selectedImageFile, aiResult }) {
+      imageError.style.display = "none";
+      imageError.textContent = "";
+
+      resultImage.onload = function () {
+        imageError.style.display = "none";
+        imageError.textContent = "";
+      };
+
+      resultImage.onerror = function () {
+        imageError.style.display = "flex";
+        imageError.innerHTML =
+          "画像が見つかりません。<br><br>" +
+          "探している画像：<br>" +
+          selectedImageFile +
+          "<br><br>" +
+          "imagesフォルダの中に、この名前のjpg画像があるか確認してください。";
+      };
+
+      resultImage.src = selectedImageFile;
+
+      debugPath.textContent = `今回選ばれた画像：${selectedImageFile}`;
+
+      resultName.textContent = name;
+      resultSecretJob.textContent = aiResult.secretJob;
+
+      statsArea.innerHTML = "";
+
+      aiResult.stats.forEach(stat => {
+        const item = document.createElement("div");
+        item.className = "stat-item";
+
+        const label = document.createElement("span");
+        label.className = "stat-label";
+        label.textContent = stat.label;
+
+        const value = document.createElement("span");
+        value.className = "stat-value";
+        value.textContent = stat.value;
+
+        item.appendChild(label);
+        item.appendChild(value);
+        statsArea.appendChild(item);
+      });
+
+      specialMove.textContent = aiResult.specialMove;
+      fortune.textContent = aiResult.fortune;
+      businessMessage.textContent = aiResult.businessMessage;
+    }
+
+    async function sendResultToGas(payload) {
+      if (!CONFIG.GAS_WEB_APP_URL || CONFIG.GAS_WEB_APP_URL === "ここにGASのウェブアプリURLを貼る") {
+        console.warn("GAS_WEB_APP_URLが未設定なので、スプレッドシート保存はスキップしました。");
+        return;
+      }
+
+      try {
+        await fetch(CONFIG.GAS_WEB_APP_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        console.log("GASへ送信しました。");
+
+      } catch (error) {
+        console.error("GAS送信エラー:", error);
+      }
+    }
+
+    async function handleSaveImage() {
+      hideError();
+
+      try {
+        const captureArea = document.getElementById("captureArea");
+
+        await document.fonts.ready;
+
+        const canvas = await html2canvas(captureArea, {
+          backgroundColor: null,
+          scale: 2,
+          useCORS: true
+        });
+
+        const link = document.createElement("a");
+        link.download = `rpg-job-fortune-${Date.now()}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+
+      } catch (error) {
+        console.error(error);
+        showError("画像保存に失敗しました。\n\n画像ファイルの場所や名前を確認してください。");
+      }
+    }
+
+    function resetApp() {
+      resultWrapper.style.display = "none";
+      formCard.style.display = "block";
+      latestResultPayload = null;
+      hideError();
+    }
+
+    function setLoading(isLoading) {
+      loading.style.display = isLoading ? "block" : "none";
+      submitBtn.disabled = isLoading;
+      submitBtn.textContent = isLoading ? "生成中..." : "結果を見る";
+    }
+
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.style.display = "block";
+    }
+
+    function hideError() {
+      errorBox.textContent = "";
+      errorBox.style.display = "none";
+    }
+  </script>
+</body>
+</html>

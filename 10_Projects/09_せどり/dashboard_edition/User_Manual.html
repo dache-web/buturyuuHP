@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profit Finder Pro - 取扱説明書</title>
+    <style>
+        :root {
+            --primary: #0071E3;
+            --bg: #F5F5F7;
+            --card: #FFFFFF;
+            --text: #1D1D1F;
+            --sub: #86868B;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        h1 {
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 18px;
+            color: var(--sub);
+        }
+        .section {
+            background: var(--card);
+            padding: 40px;
+            border-radius: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        h2 {
+            font-size: 24px;
+            margin-top: 0;
+            border-bottom: 2px solid var(--bg);
+            padding-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        h3 {
+            font-size: 18px;
+            margin-top: 25px;
+            color: var(--primary);
+        }
+        .icon {
+            font-size: 28px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        code {
+            background: #F2F2F7;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .step-number {
+            display: inline-flex;
+            width: 28px;
+            height: 28px;
+            background: var(--primary);
+            color: white;
+            border-radius: 14px;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .alert {
+            background: #FFF9E6;
+            border-left: 4px solid #FF9F0A;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            color: var(--sub);
+            margin-top: 60px;
+            font-size: 14px;
+        }
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Profit Finder Pro</h1>
+            <div class="subtitle">公式取扱説明書</div>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">🚀</span> セットアップ手順</h2>
+            <p>本システムを動作させるには、お使いのPCに <strong>Node.js</strong> がインストールされている必要があります。</p>
+            
+            <div style="margin-top:20px;">
+                <p><span class="step-number">1</span> <strong>Node.jsのインストール:</strong> <a href="https://nodejs.org/" target="_blank">Node.js公式サイト</a> から「LTS（推奨版）」をダウンロードし、インストールしてください。</p>
+                <p><span class="step-number">2</span> <strong>プロジェクトの準備:</strong> お送りした <code>dashboard_edition</code> フォルダをデスクトップなどの任意の場所に展開します。</p>
+                <p><span class="step-number">3</span> <strong>起動:</strong> フォルダ内の <strong><code>起動する.bat</code></strong> をダブルクリックしてください。</p>
+            </div>
+            <div class="alert" style="background: #E8F2FF; border-left-color: #0071E3;">
+                <strong>ポイント:</strong> 初回起動時に自動で準備（セットアップ）が行われます。次回以降も、このファイルをダブルクリックするだけでツールが起動し、自動でブラウザが開きます。
+            </div>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">🖱️</span> 基本的な使い方</h2>
+            <h3>① スキャン設定</h3>
+            <ul>
+                <li><strong>ポイント倍率:</strong> 楽天・Yahooのポイント還元率を入力してください。</li>
+                <li><strong>指定買取店フィルタ:</strong> 「森森」「ルデヤ」など、特定の店だけで利益を見たい場合に入力します。</li>
+            </ul>
+
+            <h3>② ファイルの読み込み</h3>
+            <p>買取店から配布されているCSVファイルを選択し、「スキャン開始」を押します。</p>
+            <div class="alert">
+                <strong>注意:</strong> CSVには「JANコード（8桁または13桁）」が含まれている必要があります。
+            </div>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">🔑</span> APIキーの取得と設定について</h2>
+            <p>本システムを独自のライセンスで運用するには、楽天およびYahooのAPIキーの取得が必要です。顧客に以下の情報を共有し、不足している情報を収集してください。</p>
+            
+            <h3>1. 楽天APIの取得</h3>
+            <ul>
+                <li><strong>取得URL:</strong> <a href="https://webservice.rakuten.co.jp/app/create" target="_blank">楽天デベロッパー 受付</a></li>
+                <li><strong>必要な項目:</strong>
+                    <ul>
+                        <li><strong>アプリID (applicationId):</strong> 20桁前後の文字列</li>
+                        <li><strong>アクセスキー (accessKey):</strong> 40桁前後の長い文字列</li>
+                        <li><strong>アフィリエイトID (affiliateId):</strong> アフィリエイト報酬を受け取る場合に必要</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>2. YahooショッピングAPIの取得</h3>
+            <ul>
+                <li><strong>取得URL:</strong> <a href="https://developer.yahoo.co.jp/apps/" target="_blank">Yahoo!デベロッパーネットワーク 管理</a></li>
+                <li><strong>必要な項目:</strong>
+                    <ul>
+                        <li><strong>クライアントID (Client ID):</strong> ツールを登録した際に発行される「Client ID」の1つのみでOKです。</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <p style="margin-top:15px; font-size:14px; color:var(--sub);">※これらのキーをフォルダ内の <strong><code>config.js</code></strong> に上書き保存することで、独自のライセンスでの運用が開始されます。</p>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">📊</span> 分析結果の見方</h2>
+            <p>結果は利益率（ROI）の高い順に並びます。</p>
+            <ul>
+                <li><strong>実質仕入価格:</strong> ポイント還元を考慮した「本当の仕入値」です。</li>
+                <li><strong>見込利益:</strong> 
+                    <ul>
+                        <li><span style="color:#000; font-weight:bold;">黒文字</span>：利益が出るお宝商品です。</li>
+                        <li><span style="color:#FF3B30; font-weight:bold;">赤文字</span>：赤字になる商品です（マイナス表記）。</li>
+                    </ul>
+                </li>
+                <li><strong>詳細レポート:</strong> 商品をクリックすると、指定店と市場最強店での利益を比較できます。</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            &copy; 2026 Profit Finder Pro Team. All Rights Reserved.
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# ID-specific files
+.gemini/
+.antigravity/
+
+# Temporary files
+*.tmp
+*.log

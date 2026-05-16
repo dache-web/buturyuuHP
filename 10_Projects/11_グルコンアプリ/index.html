@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Branding LP | プレミアム自己紹介</title>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- 編集ツール（サイドバー） -->
+    <aside class="editor-sidebar">
+      <h1>LP編集ツール</h1>
+      <form id="intro-form">
+        <div class="form-group">
+          <label for="name-kanji">氏名（漢字）</label>
+          <input type="text" id="name-kanji" placeholder="山田 太郎">
+        </div>
+        <div class="form-group">
+          <label for="name-kana">氏名（かな）</label>
+          <input type="text" id="name-kana" placeholder="やまだ たろう">
+        </div>
+        <div class="form-group">
+          <label for="job-title">肩書き</label>
+          <input type="text" id="job-title" placeholder="AIエンジニア / ウェブデザイナー">
+        </div>
+        <div class="form-group">
+          <label for="catchphrase">キャッチコピー</label>
+          <input type="text" id="catchphrase" placeholder="ワクワクを届けるエンジニア">
+        </div>
+        <div class="form-group">
+          <label for="biography">自己紹介（50-100文字）</label>
+          <textarea id="biography" rows="4"></textarea>
+          <div class="char-counter">0 / 100</div>
+        </div>
+        <div class="form-group">
+          <label for="sns-id">SNS ID</label>
+          <input type="text" id="sns-id" placeholder="@username">
+        </div>
+      </form>
+      <div class="sidebar-footer">
+        <p>※入力内容はリアルタイムでLPに反映されます</p>
+      </div>
+    </aside>
+
+    <!-- LPプレビューエリア -->
+    <main class="lp-container">
+      
+      <!-- Section 1: Hero -->
+      <section id="hero" class="section-hero">
+        <div class="premium-banner">
+          <div class="banner-content">
+            <div class="catchphrase-layer" id="view-catchphrase">ワクワクを届けるエンジニア</div>
+            <div class="identity-layer">
+              <span class="job-title-layer" id="view-job-title">ウェブデザイナー</span>
+              <div class="name-layer">
+                <ruby id="view-name">
+                  <span id="name-main">山田 太郎</span>
+                  <rt id="name-sub">やまだ たろう</rt>
+                </ruby>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scroll-indicator">Scroll</div>
+      </section>
+
+      <!-- Section 2: Vision -->
+      <section id="vision" class="section-content fade-in">
+        <div class="container">
+          <h2 class="section-title gold-border">Mission</h2>
+          <p class="vision-text">
+            デジタルと感性を融合させ、<br>
+            明日への「ワクワク」を創造する。
+          </p>
+        </div>
+      </section>
+
+      <!-- Section 3: Services -->
+      <section id="services" class="section-content fade-in">
+        <div class="container">
+          <h2 class="section-title silver-border">Services</h2>
+          <div class="service-grid">
+            <div class="service-card gold-accent">
+              <h3>Design</h3>
+              <p>視覚的な美しさだけでなく、ブランドの哲学を体現する本質的なデザインを提供します。</p>
+            </div>
+            <div class="service-card gold-accent">
+              <h3>Engineer</h3>
+              <p>最新のAI技術と確かな実装力で、ビジネスの成長を加速させるシステムを構築します。</p>
+            </div>
+            <div class="service-card gold-accent">
+              <h3>Writing</h3>
+              <p>言葉の持つ力を最大限に引き出し、読者の心に深く刺さるストーリーを紡ぎます。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: About -->
+      <section id="about" class="section-content fade-in">
+        <div class="container">
+          <h2 class="section-title gold-border">About Me</h2>
+          <div class="about-flex">
+            <div class="about-text">
+              <p id="view-bio">
+                10年間のエンジニア経験を活かし、最新のAI技術とデザインを融合させた心地よいプロダクト開発を得意としています。趣味はカフェ巡りと読書です。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 5: Contact -->
+      <section id="contact" class="section-content fade-in">
+        <div class="container">
+          <h2 class="section-title silver-border">Contact</h2>
+          <p class="contact-sns" id="view-sns">@username</p>
+          <div class="footer-line"></div>
+          <p class="copyright">&copy; 2026 Professional Profile</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

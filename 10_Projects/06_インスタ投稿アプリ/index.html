@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SNS発信内容作成アプリ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <nav class="top-nav">
+        <a href="index.html" class="nav-link active">投稿作成</a>
+        <a href="profile.html" class="nav-link">口調学習</a>
+      </nav>
+      <h1>SNS発信内容作成</h1>
+      <p>発信したいことから、投稿テーマ・本文・ハッシュタグ・画像生成プロンプトまで作成します</p>
+    </header>
+
+    <section class="card" aria-label="入力フォーム">
+      <div class="form-group">
+        <label for="apiKey">OpenAI APIキー (必須)</label>
+        <input type="password" id="apiKey" placeholder="sk-...">
+        <p class="hint">※APIキーはブラウザに自動保存されます。</p>
+      </div>
+
+      <div class="form-group">
+        <label>参考画像アップロード (任意) ※各プロンプトのテイストに反映されます</label>
+        <div class="drop-zone-container" style="display: flex; gap: 16px; margin-top: 8px;">
+          <div class="drop-zone" id="dropZone1">
+            <strong>1枚目</strong>
+            <span>画像を選択するか<br>ドラッグ＆ドロップ</span>
+            <input type="file" id="refImage1" accept="image/*" class="visually-hidden-file">
+            <img id="preview1" src="" style="display: none; max-width: 100%; margin-top: 8px; border-radius: 4px;">
+          </div>
+          <div class="drop-zone" id="dropZone2">
+            <strong>2枚目</strong>
+            <span>画像を選択するか<br>ドラッグ＆ドロップ</span>
+            <input type="file" id="refImage2" accept="image/*" class="visually-hidden-file">
+            <img id="preview2" src="" style="display: none; max-width: 100%; margin-top: 8px; border-radius: 4px;">
+          </div>
+          <div class="drop-zone" id="dropZone3">
+            <strong>3枚目</strong>
+            <span>画像を選択するか<br>ドラッグ＆ドロップ</span>
+            <input type="file" id="refImage3" accept="image/*" class="visually-hidden-file">
+            <img id="preview3" src="" style="display: none; max-width: 100%; margin-top: 8px; border-radius: 4px;">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="messageIdea">何を発信したいか</label>
+        <textarea id="messageIdea" rows="4" placeholder="例: 乾燥肌に悩む人に、保湿ケアの大切さと商品の魅力を伝えたい。まだ具体的な投稿内容は決まっていない。"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="textLength">生成する文章量</label>
+          <select id="textLength">
+            <option value="標準">標準（おすすめ）</option>
+            <option value="短め">短め</option>
+            <option value="長め">長め</option>
+          </select>
+        </div>
+        <div class="form-group half">
+          <label for="imageTextMode">3枚の文字指定方法</label>
+          <select id="imageTextMode">
+            <option value="auto">1つの指示から3枚分を生成</option>
+            <option value="individual">3枚それぞれ個別に指定</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="storeInfo">お店・サービス情報（任意）</label>
+        <textarea id="storeInfo" rows="4" placeholder="例）店名、住所、営業時間、定休日、予約URL、Instagram、価格帯、おすすめメニューなど。空白なら指示なしで作成します。"></textarea>
+        <p class="hint">空白の場合は「店舗情報の指定なし」として、そのまま生成します。</p>
+      </div>
+
+      <div id="individualImageTextFields" class="series-text-fields" style="display: none;">
+        <div class="form-group">
+          <label for="imageText1">1枚目のテキスト指示（任意）</label>
+          <textarea id="imageText1" rows="2" placeholder="例）導入。美味しそうなピザがあることを短く伝える"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="imageText2">2枚目のテキスト指示（任意）</label>
+          <textarea id="imageText2" rows="2" placeholder="例）魅力。家族で楽しめること、素材や焼きたて感を伝える"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="imageText3">3枚目のテキスト指示（任意）</label>
+          <textarea id="imageText3" rows="2" placeholder="例）行動喚起。予約・来店・テイクアウトにつなげる"></textarea>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="platform">発信先</label>
+          <select id="platform">
+            <option value="Instagramフィード">Instagramフィード</option>
+            <option value="Instagramリール">Instagramリール</option>
+            <option value="Instagramストーリー">Instagramストーリー</option>
+            <option value="YouTubeサムネイル">YouTubeサムネイル</option>
+            <option value="X投稿">X投稿</option>
+          </select>
+        </div>
+        <div class="form-group half">
+          <label for="genre">ジャンル</label>
+          <select id="genre">
+            <option value="美容">美容</option>
+            <option value="ビジネス">ビジネス</option>
+            <option value="グルメ">グルメ</option>
+            <option value="教育">教育</option>
+            <option value="エンタメ">エンタメ</option>
+            <option value="ライフスタイル">ライフスタイル</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="targetAudience">届けたい相手（ペルソナ）</label>
+          <select id="targetAudience">
+            <option value="幅広い一般層（認知拡大・初心者向け）">幅広い一般層（認知拡大・初心者向け）</option>
+            <option value="トレンドに敏感な10〜20代（SNSネイティブ・Z世代）">トレンドに敏感な10〜20代（SNSネイティブ・Z世代）</option>
+            <option value="自分磨きを楽しむ20〜30代女性（美容・ファッション）">自分磨きを楽しむ20〜30代女性（美容・ファッション）</option>
+            <option value="自己投資を惜しまない30〜40代女性（キャリア・高単価層）">自己投資を惜しまない30〜40代女性（キャリア・高単価層）</option>
+            <option value="忙しい共働き・子育て層（時短・コスパ・実用性重視）">忙しい共働き・子育て層（時短・コスパ・実用性重視）</option>
+            <option value="スキルアップ・副業に関心のあるビジネス層（ロジカル・ノウハウ重視）">スキルアップ・副業に関心のあるビジネス層（ロジカル・ノウハウ重視）</option>
+            <option value="趣味や推し活に情熱を注ぐ熱狂的なファン層">趣味や推し活に情熱を注ぐ熱狂的なファン層</option>
+            <option value="健康・ウェルネス意識の高い層（オーガニック・丁寧な暮らし）">健康・ウェルネス意識の高い層（オーガニック・丁寧な暮らし）</option>
+          </select>
+        </div>
+        <div class="form-group half">
+          <label for="tone">文体・トーン</label>
+          <select id="tone">
+            <option value="親しみやすい">親しみやすい</option>
+            <option value="プロフェッショナル">プロフェッショナル</option>
+            <option value="カジュアル">カジュアル</option>
+            <option value="高級感">高級感</option>
+            <option value="共感重視">共感重視</option>
+            <option value="強めの訴求">強めの訴求</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="mode">モード</label>
+          <select id="mode">
+            <option value="通常">通常</option>
+            <option value="漫画">漫画</option>
+          </select>
+        </div>
+        <div class="form-group half" id="characterSettingGroup" style="display: none;">
+          <label for="characterSetting">キャラ設定 (漫画時のみ)</label>
+          <textarea id="characterSetting" rows="2" placeholder="例: 20代の美容系インフルエンサー風の女性。金髪ボブ。"></textarea>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="textLarge">文字（大）/ 吹き出し (空欄時はAIが自動考案)</label>
+        <input type="text" id="textLarge" placeholder="メインコピーを入力してください">
+      </div>
+      <div class="form-group">
+        <label for="textMedium">文字（中）/ モノローグ (空欄時はAIが自動考案)</label>
+        <input type="text" id="textMedium" placeholder="サブコピーを入力してください">
+      </div>
+      <div class="form-group">
+        <label for="textSmall">文字（小）/ 描き文字 (空欄時はAIが自動考案)</label>
+        <input type="text" id="textSmall" placeholder="補足コピーを入力してください">
+      </div>
+
+      <div class="form-group">
+        <label for="writingSample">AIに真似してほしい「あなたの普段の文章」（任意）</label>
+        <p class="hint" style="margin-top: -4px; margin-bottom: 8px;">過去のSNS投稿などを貼り付けてください。AIがあなたの「口調・絵文字の使い分け・テンション」を学習して、あなたらしい投稿文を生成します。</p>
+        <textarea id="writingSample" rows="4" placeholder="（例）おつかれさまです！今日は新しく買った〇〇を紹介するよ✨ これマジで神アイテムだった…！みんなもぜひ試してみてね👇"></textarea>
+        <p id="profileStatus" class="hint">保存済みの口調プロフィールはありません。</p>
+      </div>
+
+
+
+      <button id="generateBtn" class="primary-btn">発信内容を作成する</button>
+    </section>
+
+    <section id="loadingArea" class="loading-area" style="display: none;" aria-live="polite">
+      <div class="spinner"></div>
+      <p id="loadingText">企画・構成を立案中...<br><small>1/2ステップ（約10〜15秒）</small></p>
+    </section>
+
+    <section id="errorLogArea" class="card" style="display: none; border-left: 4px solid #ef4444;">
+      <h2 style="color: #b91c1c; font-size: 18px; margin-bottom: 12px;">システムエラーログ (Error Handler)</h2>
+      <div id="errorLogContent" class="result-content" style="color: #991b1b; background-color: #fef2f2; border-color: #fecaca; min-height: 50px;"></div>
+    </section>
+
+    <section id="resultArea" class="result-area" style="display: none;">
+      <h2>生成結果</h2>
+
+      <div class="result-box">
+        <div class="result-header">
+          <h3>投稿企画</h3>
+          <button class="copy-btn" data-target="planResult">コピー</button>
+        </div>
+        <div id="planResult" class="result-content" contenteditable="true"></div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-header">
+          <h3>画像内に入れる文字</h3>
+          <button class="copy-btn" data-target="visualTextResult">コピー</button>
+        </div>
+        <div id="visualTextResult" class="result-content" contenteditable="true"></div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-header">
+          <h3>画像生成プロンプト (1枚目)</h3>
+          <button class="copy-btn" data-target="imagePromptResult1">コピー</button>
+        </div>
+        <div id="imagePromptResult1" class="result-content" contenteditable="true"></div>
+
+        <div class="result-header" style="margin-top: 16px;">
+          <h3>画像生成プロンプト (2枚目)</h3>
+          <button class="copy-btn" data-target="imagePromptResult2">コピー</button>
+        </div>
+        <div id="imagePromptResult2" class="result-content" contenteditable="true"></div>
+
+        <div class="result-header" style="margin-top: 16px;">
+          <h3>画像生成プロンプト (3枚目)</h3>
+          <button class="copy-btn" data-target="imagePromptResult3">コピー</button>
+        </div>
+        <div id="imagePromptResult3" class="result-content" contenteditable="true"></div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-header">
+          <h3>投稿本文（ハッシュタグ込み）</h3>
+          <button class="copy-btn" data-target="captionResult">コピー</button>
+        </div>
+        <div id="captionResult" class="result-content" contenteditable="true"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

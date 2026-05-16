@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>口調・思考学習</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <nav class="top-nav">
+        <a href="index.html" class="nav-link">投稿作成</a>
+        <a href="profile.html" class="nav-link active">口調学習</a>
+      </nav>
+      <h1>口調・思考学習</h1>
+      <p>過去投稿やメモから、あなたらしい言い回し・判断基準・避けたい表現を保存します</p>
+    </header>
+
+    <section class="card" aria-label="学習フォーム">
+      <div class="form-group">
+        <label for="apiKey">OpenAI APIキー (必須)</label>
+        <input type="password" id="apiKey" placeholder="sk-...">
+        <p class="hint">APIキーはこの端末に保存しません。</p>
+      </div>
+
+      <div class="form-group">
+        <label for="postUrls">学習させたい投稿URL (任意)</label>
+        <textarea id="postUrls" rows="3" placeholder="Instagram、YouTube、Xなどの投稿URLを1行ずつ貼ってください。URLは分析メモとして使います。"></textarea>
+        <p class="hint">ログインが必要なSNS本文は自動取得できない場合があります。本文は下の欄にコピーすると安定します。</p>
+      </div>
+
+      <div class="form-group">
+        <label for="youtubeUrls">YouTube URL (任意)</label>
+        <textarea id="youtubeUrls" rows="2" placeholder="YouTube動画URLを1行ずつ貼ってください。サムネイルURLを自動で推定して学習に使います。"></textarea>
+        <p class="hint">APIなしでは概要欄の安定取得はできません。概要欄は文章サンプルにコピーしてください。</p>
+      </div>
+
+      <div class="form-group">
+        <label for="sampleImages">学習させたい画像・スクショ (任意・複数可)</label>
+        <div id="imageDropZone" class="drop-zone" tabindex="0" role="button" aria-label="画像をまとめて取り込む">
+          <strong>画像をここにドラッグ＆ドロップ</strong>
+          <span>またはクリックして複数ファイルを選択</span>
+        </div>
+        <input type="file" id="sampleImages" class="visually-hidden-file" accept="image/*" multiple>
+        <div id="imagePreviewGrid" class="preview-grid" style="display: none;"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="sampleText">文章サンプル貼り付け (任意)</label>
+        <textarea id="sampleText" rows="8" placeholder="過去の投稿文、キャプション、よく使う言葉、考え方のメモなどを貼ってください。スプレッドシートURLと併用できます。"></textarea>
+      </div>
+
+      <details class="advanced-panel">
+        <summary>スプレッドシートから読み込む</summary>
+        <div class="form-group">
+          <label for="sheetUrl">GoogleスプレッドシートのCSV公開URL (任意)</label>
+          <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv">
+          <p class="hint">必要な場合だけ使います。普段は投稿URL・画像・文章貼り付けで十分です。</p>
+        </div>
+      </details>
+
+      <div class="form-group">
+        <label for="profileMemo">補足メモ (任意)</label>
+        <textarea id="profileMemo" rows="3" placeholder="例: 丁寧すぎるより親しみやすく。断定しすぎない。押し売り感を出さない。"></textarea>
+      </div>
+
+      <div class="action-stack">
+        <button id="templateBtn" class="secondary-btn" type="button">学習用テンプレを出力する</button>
+        <button id="learnBtn" class="primary-btn">口調プロフィールを作成・保存する</button>
+      </div>
+    </section>
+
+    <section id="loadingArea" class="loading-area" style="display: none;" aria-live="polite">
+      <div class="spinner"></div>
+      <p>AIが口調と考え方を分析中...<br><small>10〜20秒ほどかかります</small></p>
+    </section>
+
+    <section class="result-area">
+      <h2>保存済みプロフィール</h2>
+      <div class="result-box">
+        <div class="result-header">
+          <h3>テンプレ / 口調・思考プロフィール</h3>
+          <div class="button-row">
+            <button id="copyProfileBtn" class="copy-btn">コピー</button>
+            <button id="clearProfileBtn" class="copy-btn danger">削除</button>
+          </div>
+        </div>
+        <div id="profileResult" class="result-content" contenteditable="true"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="profile.js"></script>
+</body>
+</html>

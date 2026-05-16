@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: sans-serif; padding: 20px; background-color: #f0f4f8; }
+      .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+      h1 { font-size: 24px; color: #333; margin-top: 0;}
+      .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+      .form-group { display: flex; flex-direction: column; }
+      .full-width { grid-column: 1 / -1; }
+      label { font-weight: bold; color: #333; margin-bottom: 5px; font-size: 14px; }
+      .desc { font-size: 12px; color: #666; margin-top: 0; margin-bottom: 5px; }
+      input[type="text"], input[type="date"], textarea, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; width: 100%; box-sizing: border-box; }
+      textarea { resize: vertical; }
+      button { background-color: #007bff; color: white; padding: 14px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 10px;}
+      button:hover { background-color: #0056b3; }
+      button:disabled { background-color: #cccccc; cursor: not-allowed; }
+      
+      .loading { color: #d9534f; font-weight: bold; display: none; margin-top: 15px; text-align: center; }
+      
+      #draftPanel { margin-top: 30px; display: none; padding-top: 20px; border-top: 2px dashed #ccc;}
+      .analysis-box { background: #fdfdfd; border: 1px solid #eee; padding: 15px; border-radius: 4px; margin-bottom: 15px; }
+      .analysis-box h3 { font-size: 16px; color: #555; margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
+      .analysis-box ul { margin: 0; padding-left: 20px; color: #444; font-size: 14px;}
+      .analysis-box li { margin-bottom: 5px; }
+      
+      .doc-link-btn { display: inline-block; background-color: #34a853; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-bottom: 20px;}
+      .doc-link-btn:hover { background-color: #2b8c45; }
+      .learning-panel { margin-top: 40px; padding: 20px; border-radius: 8px; background-color: #fff3cd; border: 1px solid #ffe69c; display: none;}
+      .debug-panel { margin-top: 15px; padding: 12px; border: 1px solid #ddd; border-radius: 4px; background: #f8f9fa; font-size: 12px; color: #333; white-space: pre-wrap; }
+      .debug-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+      .debug-actions button { font-size: 13px; padding: 10px; margin-top: 0; background: #6c757d; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>歯科医院 営業手紙作成＆案件登録</h1>
+      <div class="grid-form">
+        <div class="form-group full-width"><label for="clinicName">歯科医院名（任意）</label><input type="text" id="clinicName" placeholder="空欄の場合、AIがHPから推測して自動入力します"></div>
+        <div class="form-group"><label for="deadline">締め切り日</label><input type="date" id="deadline"></div>
+        <div class="form-group"><label for="memo">管理用メモ</label><input type="text" id="memo" placeholder="特記事項があれば入力"></div>
+        <div class="form-group full-width"><label for="urlInput">対象のホームページURL</label><input type="text" id="urlInput" placeholder="https://example-dental.com"></div>
+        <div class="form-group full-width"><label for="manualTextInput">ホームページ本文を手動で貼り付け</label><textarea id="manualTextInput" rows="4"></textarea></div>
+        
+        <div class="form-group full-width"><label for="openingTemplateSelect">冒頭固定文</label><select id="openingTemplateSelect"></select></div>
+        <div class="form-group"><label for="closingTemplateSelect1">締め固定文 1</label><select id="closingTemplateSelect1"></select></div>
+        <div class="form-group"><label for="closingTemplateSelect2">締め固定文 2（任意）</label><select id="closingTemplateSelect2"></select></div>
+        <div class="form-group full-width"><p class="desc">冒頭と締めは選択した固定文を使用します。本文のみAIが作成し、全体を750〜780文字目標、最大800文字に収めます。</p></div>
+      </div>
+      
+      <button id="submitBtn" onclick="generate()">作成開始</button>
+      <div class="debug-panel" id="debugPanel">アプリ版: 2026-05-03-select-fixed-780-1</div>
+      <div class="debug-actions">
+        <button type="button" onclick="checkAppStatus()">アプリ状態確認</button>
+        <button type="button" onclick="checkUrlFetch()">URL取得確認</button>
+      </div>
+      
+      <div id="loadingMsg" class="loading">AIが分析と下書きを作成中です...<br>完了後に内容を編集できます。</div>
+      
+      <!-- ステップ2：ドラフト確認と編集エリア -->
+      <div id="draftPanel">
+        <h2 style="color: #007bff;">ステップ2: 手紙の確認と編集</h2>
+        
+        <div class="form-group full-width" style="margin-bottom: 14px;">
+          <label>冒頭パート（選択固定文）</label>
+          <textarea id="openingPartText" rows="5" oninput="syncCombinedLetter()" style="font-size:15px; line-height: 1.8; background-color: #fff;"></textarea>
+        </div>
+
+        <div class="form-group full-width" style="margin-bottom: 14px;">
+          <label>本文（AI作成・750〜780文字調整）</label>
+          <textarea id="bodyPartText" rows="10" oninput="syncCombinedLetter()" style="font-size:15px; line-height: 1.8; background-color: #fff;"></textarea>
+        </div>
+
+        <div class="form-group full-width" style="margin-bottom: 20px;">
+          <label>締めパート（選択固定文）</label>
+          <textarea id="closingPartText" rows="5" oninput="syncCombinedLetter()" style="font-size:15px; line-height: 1.8; background-color: #fff;"></textarea>
+        </div>
+
+        <div class="form-group full-width" style="margin-bottom: 20px;">
+          <label>結合本文（保存される内容）</label>
+          <textarea id="editedLetterText" rows="18" readonly style="font-size:15px; line-height: 1.8; background-color: #f8f9fa;"></textarea>
+        </div>
+
+        <div class="analysis-box">
+          <h3>【この医院の強み】</h3>
+          <ul id="strengthsList"></ul>
+        </div>
+        
+        <div class="analysis-box">
+          <h3>【この医院の弱み・課題】</h3>
+          <ul id="weaknessesList"></ul>
+        </div>
+
+        <button id="saveBtn" onclick="saveToDoc()" style="background-color: #28a745; margin-top: 20px;">Googleドキュメントに保存</button>
+        <div id="savingMsg" class="loading">Googleドキュメントに保存中です...</div>
+        
+        <div id="saveResult" style="display:none; margin-top: 20px;">
+          <h3 style="color: #28a745;">✅ 登録完了しました</h3>
+          <a id="docLink" class="doc-link-btn" href="#" target="_blank">📄 納品用Googleドキュメントを開く</a>
+        </div>
+      </div>
+
+      <!-- 学習データ保存フォーム -->
+      <div id="learningPanel" class="learning-panel">
+        <h3 style="margin-top:0; color: #856404;">📝 手動でAIを育てる</h3>
+        <p class="desc">上記で手直しした文章を、今後のAIの参考データとして保存できます。</p>
+        <div class="form-group" style="margin-bottom:10px;"><label>修正ポイント（AIへの指摘）</label><input type="text" id="correctionPoints" placeholder="例：もう少し丁寧な口調にする、この強みをもっと強調する"></div>
+        <div class="grid-form" style="margin-bottom:10px;">
+          <div class="form-group"><label>採用したい好ましいフレーズ</label><input type="text" id="adoptedPhrases" placeholder="例：地域密着の温かい雰囲気"></div>
+          <div class="form-group"><label>避けたい表現</label><input type="text" id="avoidedPhrases" placeholder="例：〜と推測されます"></div>
+        </div>
+        <div class="grid-form" style="margin-bottom:0; align-items: end;">
+          <div class="form-group">
+            <label>評価</label>
+            <select id="evaluation">
+              <option value="採用">採用（そのまま使えた）</option>
+              <option value="修正後採用" selected>修正後採用（手直しして使った）</option>
+              <option value="不採用">不採用（使えなかった）</option>
+              <option value="保留">保留</option>
+            </select>
+          </div>
+          <div class="form-group"><button id="learnBtn" onclick="saveLearning()" style="background-color: #e0a800; margin-top:0;">手動データを学習</button></div>
+        </div>
+        <div id="learningStatus" style="font-weight:bold; margin-top: 10px; color: #28a745;"></div>
+        
+        <hr style="border: 0; border-top: 1px dashed #ccc; margin: 20px 0;">
+        <h4 style="margin-top:0; color: #856404;">📄 過去のGoogleドキュメント見本から学習させる</h4>
+        <p class="desc">過去に採用した見本ドキュメントのURLを入れると、AIがその文体と構成を丸ごと学習します。</p>
+        <div class="grid-form" style="margin-bottom:0; align-items: end;">
+          <div class="form-group">
+            <label>見本ドキュメントURL</label>
+            <input type="text" id="sampleDocUrl" placeholder="https://docs.google.com/document/d/.../edit">
+          </div>
+          <div class="form-group">
+            <button id="learnDocBtn" onclick="learnFromGoogleDoc()" style="background-color: #17a2b8; margin-top:0;">読み込んで学習データ化</button>
+          </div>
+        </div>
+        <div id="docLearnStatus" style="font-weight:bold; margin-top: 10px; color: #28a745;"></div>
+
+      </div>
+    </div>
+
+    <script>
+      var lastAiText = "";
+      var savedStrengths = [];
+      var savedWeaknesses = [];
+
+      function setDebug(message) {
+        document.getElementById('debugPanel').innerText = message;
+      }
+
+      function fillTemplateSelect(selectId, options, includeBlank) {
+        var select = document.getElementById(selectId);
+        select.innerHTML = "";
+        if (includeBlank) {
+          var blank = document.createElement('option');
+          blank.value = "";
+          blank.text = "使用しない";
+          select.appendChild(blank);
+        }
+        options.forEach(function(item) {
+          var option = document.createElement('option');
+          option.value = item.id;
+          option.text = item.label;
+          option.title = item.preview || "";
+          select.appendChild(option);
+        });
+      }
+
+      function loadTemplateOptions() {
+        setDebug('テンプレート候補を読み込み中...');
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res.error) {
+              setDebug('テンプレート候補取得エラー:\n' + res.error);
+              return;
+            }
+            fillTemplateSelect('openingTemplateSelect', res.openingOptions || [], false);
+            fillTemplateSelect('closingTemplateSelect1', res.closingOptions || [], false);
+            fillTemplateSelect('closingTemplateSelect2', res.closingOptions || [], true);
+            setDebug('アプリ版: 2026-05-03-select-fixed-780-1\nテンプレート候補を読み込みました。');
+          })
+          .withFailureHandler(function(e) {
+            setDebug('テンプレート候補取得エラー:\n' + e.message);
+          })
+          .getTemplateOptions();
+      }
+
+      function syncCombinedLetter() {
+        var opening = document.getElementById('openingPartText').value.trim();
+        var body = document.getElementById('bodyPartText').value.trim();
+        var closing = document.getElementById('closingPartText').value.trim();
+        document.getElementById('editedLetterText').value = [opening, body, closing].filter(function(part) {
+          return part.length > 0;
+        }).join("\n\n");
+      }
+
+      function checkAppStatus() {
+        setDebug('アプリ状態を確認中...');
+        google.script.run
+          .withSuccessHandler(function(res) {
+            setDebug('アプリ状態:\n' + JSON.stringify(res, null, 2));
+          })
+          .withFailureHandler(function(e) {
+            setDebug('アプリ状態確認エラー:\n' + e.message);
+          })
+          .getAppStatus();
+      }
+
+      function checkUrlFetch() {
+        var url = document.getElementById('urlInput').value;
+        if (!url) { setDebug('URL取得確認: URLが空です。'); return; }
+        setDebug('URL取得を確認中...');
+        google.script.run
+          .withSuccessHandler(function(res) {
+            setDebug('URL取得結果:\n' + JSON.stringify(res, null, 2));
+          })
+          .withFailureHandler(function(e) {
+            setDebug('URL取得確認エラー:\n' + e.message);
+          })
+          .diagnoseUrlFetch(url);
+      }
+
+      function generate() {
+        var url = document.getElementById('urlInput').value;
+        var manualText = document.getElementById('manualTextInput').value;
+        if (!url && !manualText) { alert('URLを入力するか本文を貼り付けてください'); return; }
+        var timeoutId = null;
+        
+        var reqData = {
+          url: url,
+          manualText: manualText,
+          lengthPref: 'fixed800',
+          openingTemplateId: document.getElementById('openingTemplateSelect').value,
+          closingTemplateId1: document.getElementById('closingTemplateSelect1').value,
+          closingTemplateId2: document.getElementById('closingTemplateSelect2').value
+        };
+        
+        var btn = document.getElementById('submitBtn'); var loading = document.getElementById('loadingMsg');
+        var draftPanel = document.getElementById('draftPanel'); var learnDiv = document.getElementById('learningPanel');
+        var saveResult = document.getElementById('saveResult');
+        
+        btn.disabled = true; loading.style.display = 'block'; 
+        draftPanel.style.display = 'none'; learnDiv.style.display = 'none'; saveResult.style.display = 'none';
+        timeoutId = setTimeout(function() {
+          loading.innerHTML = '処理に時間がかかっています...<br>このまま戻らない場合は、対象HPの本文を手動で貼り付けて再実行してください。';
+        }, 90000);
+        
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (timeoutId) clearTimeout(timeoutId);
+            btn.disabled = false; loading.style.display = 'none';
+            if (res.error) { 
+              alert(res.error); 
+            } else {
+              // ▼ 修正：AIが推測した医院名を補完する
+              var clinicNameInput = document.getElementById('clinicName');
+              if (!clinicNameInput.value && res.inferredClinicName) {
+                clinicNameInput.value = res.inferredClinicName;
+              }
+
+              document.getElementById('openingPartText').value = res.openingPart || "";
+              document.getElementById('bodyPartText').value = res.bodyPart || "";
+              document.getElementById('closingPartText').value = res.closingPart || "";
+              syncCombinedLetter();
+              lastAiText = document.getElementById('editedLetterText').value;
+              
+              savedStrengths = res.strengths || [];
+              var strList = document.getElementById('strengthsList');
+              strList.innerHTML = "";
+              savedStrengths.forEach(function(s) { var li = document.createElement('li'); li.innerText = s; strList.appendChild(li); });
+              
+              savedWeaknesses = res.weaknesses || [];
+              var wkList = document.getElementById('weaknessesList');
+              wkList.innerHTML = "";
+              savedWeaknesses.forEach(function(w) { var li = document.createElement('li'); li.innerText = w; wkList.appendChild(li); });
+              
+              draftPanel.style.display = 'block';
+            }
+          })
+          .withFailureHandler(function(error) {
+            if (timeoutId) clearTimeout(timeoutId);
+            btn.disabled = false; loading.style.display = 'none'; alert('処理に失敗しました: ' + error.message);
+          })
+          .generateDraft(reqData);
+      }
+
+      function saveToDoc() {
+        var btn = document.getElementById('saveBtn'); var saving = document.getElementById('savingMsg');
+        syncCombinedLetter();
+        btn.disabled = true; saving.style.display = 'block';
+        
+        var data = {
+          clinicName: document.getElementById('clinicName').value, 
+          deadline: document.getElementById('deadline').value, url: document.getElementById('urlInput').value, 
+          memo: document.getElementById('memo').value,
+          letterBody: document.getElementById('editedLetterText').value, 
+          strengths: savedStrengths, weaknesses: savedWeaknesses
+        };
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            btn.disabled = false; saving.style.display = 'none';
+            if (res.error) { 
+              alert(res.error); 
+            } else {
+              document.getElementById('saveResult').style.display = 'block';
+              document.getElementById('docLink').href = res.docUrl;
+              document.getElementById('learningPanel').style.display = 'block'; 
+              btn.style.display = 'none'; 
+            }
+          })
+          .withFailureHandler(function(e) {
+            btn.disabled = false; saving.style.display = 'none'; alert('保存処理に失敗しました: ' + e.message);
+          })
+          .saveCaseAndDoc(data);
+      }
+
+      function saveLearning() {
+        syncCombinedLetter();
+        var btn = document.getElementById('learnBtn'); btn.disabled = true;
+        document.getElementById('learningStatus').innerText = "保存中...";
+        var data = {
+          clinicName: document.getElementById('clinicName').value, url: document.getElementById('urlInput').value,
+          aiText: lastAiText, correctedText: document.getElementById('editedLetterText').value, 
+          correctionPoints: document.getElementById('correctionPoints').value, adoptedPhrases: document.getElementById('adoptedPhrases').value,
+          avoidedPhrases: document.getElementById('avoidedPhrases').value, evaluation: document.getElementById('evaluation').value
+        };
+        google.script.run
+          .withSuccessHandler(function(res) {
+            btn.disabled = false;
+            if(res.error) {
+              document.getElementById('learningStatus').style.color = 'red'; document.getElementById('learningStatus').innerText = "エラー: " + res.error;
+            } else {
+              document.getElementById('learningStatus').style.color = '#28a745'; document.getElementById('learningStatus').innerText = "✅ 手動学習データを保存しました！";
+            }
+          })
+          .withFailureHandler(function(e) {
+            btn.disabled = false; document.getElementById('learningStatus').style.color = 'red'; document.getElementById('learningStatus').innerText = "通信エラー: " + e.message;
+          })
+          .saveLearningData(data);
+      }
+
+      function learnFromGoogleDoc() {
+        var url = document.getElementById('sampleDocUrl').value;
+        if (!url) { alert("見本となるGoogleドキュメントのURLを入力してください"); return; }
+        
+        var btn = document.getElementById('learnDocBtn');
+        var status = document.getElementById('docLearnStatus');
+        btn.disabled = true;
+        status.style.color = '#333';
+        status.innerText = "ドキュメントを読み込み中です...";
+        
+        google.script.run
+          .withSuccessHandler(function(res) {
+            btn.disabled = false;
+            if (res.error) {
+              status.style.color = 'red'; status.innerText = "エラー: " + res.error;
+            } else {
+              status.style.color = '#28a745'; status.innerText = "✅ ドキュメントを読み込み、見本として学習データに保存しました！";
+              document.getElementById('sampleDocUrl').value = "";
+            }
+          })
+          .withFailureHandler(function(e) {
+            btn.disabled = false; status.style.color = 'red'; status.innerText = "通信エラー: " + e.message;
+          })
+          .learnFromDoc(url);
+      }
+    </script>
+    <script>
+      window.onload = loadTemplateOptions;
+    </script>
+  </body>
+</html>

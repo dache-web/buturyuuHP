@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profit Finder Pro - 納品ガイド</title>
+    <style>
+        :root {
+            --primary: #5E5E5E;
+            --highlight: #0071E3;
+            --bg: #FFFFFF;
+            --card: #F5F5F7;
+            --text: #1D1D1F;
+            --sub: #86868B;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            border-bottom: 3px solid var(--highlight);
+            padding-bottom: 15px;
+        }
+        .step {
+            margin-bottom: 50px;
+        }
+        .step-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--highlight);
+            margin-bottom: 15px;
+        }
+        .card {
+            background: var(--card);
+            padding: 25px;
+            border-radius: 18px;
+            margin-top: 15px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 12px;
+        }
+        .important {
+            background: #FFF0F0;
+            border: 1px solid #FF3B30;
+            padding: 15px;
+            border-radius: 12px;
+            color: #FF3B30;
+            font-weight: 600;
+            margin: 20px 0;
+        }
+        .quote {
+            background: #E8F2FF;
+            padding: 20px;
+            border-radius: 12px;
+            font-style: italic;
+            border-left: 5px solid var(--highlight);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Profit Finder Pro 納品ガイド</h1>
+        <p>このガイドは、開発物を顧客へ納品する手順を説明したものです。</p>
+
+        <div class="step">
+            <div class="step-title">1. パッケージング（ZIP作成）の方法</div>
+            <p><code>dashboard_edition</code> フォルダの中身をZIPにまとめますが、以下の点に注意してください。</p>
+            <div class="card">
+                <strong>含めるべきファイル:</strong>
+                <ul>
+                    <li><code>server.js</code>, <code>analyzer.js</code>, <code>constants.js</code>, <code>logger.js</code></li>
+                    <li><code>package.json</code>, <code>package-lock.json</code></li>
+                    <li><code>public/</code> フォルダ一式</li>
+                    <li><strong><code>起動する.bat</code> (一クリック起動ボタン)</strong></li>
+                    <li><strong><code>User_Manual.html</code> (作成した説明書)</strong></li>
+                </ul>
+                <div class="important">
+                    <strong>注意:</strong> <code>node_modules</code> フォルダは含めないでください。サイズが大きすぎるため、顧客側でインストールさせます。
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-title">2. 顧客への伝え方（例文）</div>
+            <p>メールやチャットで納品する際、以下の内容を添えてください。</p>
+            <div class="quote">
+                「お世話になっております。せどりダッシュボード『Profit Finder Pro』の完全版を納品いたします。<br><br>
+                添付のZIPを展開し、中にある <b>User_Manual.html</b> をダブルクリックして開き、セットアップ手順に従ってください。<br>
+                ※実行には Node.js のインストールが必要です（マニュアルに記載済みです）。」
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-title">3. 修正や保守について</div>
+            <p>「中古」などの除外キーワードを調整したい場合は、 <code>constants.js</code> をメモ帳などで開き、文字を書き換えるだけで対応可能です。</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,4 @@
+[2026-05-01 05:04:58] ERROR: models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent.
+[2026-05-01 05:10:56] ERROR: Gemini APIエラー: You exceeded your current quota, please check your plan and billing details. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash
+[2026-05-01 05:28:44] ERROR: This model models/gemini-2.0-flash is no longer available to new users. Please update your code to use a newer model.
+[2026-05-01 05:34:22] ERROR: URL fetch returned error pages (501, 403, etc.) preventing correct AI analysis. Implementing manual text input fallback.
