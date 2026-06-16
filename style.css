@@ -4104,13 +4104,93 @@ svg {
 .reason-section .delay-10.is-visible { transition-delay: 0.1s; } /* 最後にすぐ表示させる */
 
 @media (max-width: 768px) {
-  .reason-section {
-    min-height: 600px;
-    padding: 80px 0;
-    align-items: flex-start;
+  .reason-section,
+  .reason-section * {
+    max-width: 100%;
+    box-sizing: border-box;
   }
+  
+  .reason-section {
+    min-height: auto;
+    align-items: flex-start;
+    overflow-x: hidden;
+    padding: 72px 0;
+  }
+  
   .reason-section::before {
     background: linear-gradient(135deg, rgba(247, 244, 234, 0.96) 0%, rgba(247, 244, 234, 0.85) 100%);
+  }
+
+  .reason-section .container {
+    width: calc(100% - 40px);
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  
+  .reason-content {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* タイトル調整 */
+  .reason-content h2 {
+    font-size: clamp(32px, 9vw, 42px) !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* 小見出し */
+  .reason-subhead {
+    font-size: 22px !important;
+    line-height: 1.5 !important;
+  }
+
+  /* チェックリスト */
+  .reason-checklist li {
+    font-size: 18px !important;
+    line-height: 1.9 !important;
+  }
+
+  /* 強調文 */
+  .reason-strong-line {
+    font-size: 20px !important;
+    line-height: 1.7 !important;
+  }
+
+  /* 中央コピー */
+  .reason-center-copy,
+  .reason-center-copy .reason-nowrap {
+    font-size: clamp(24px, 7vw, 34px) !important;
+    line-height: 1.55 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* 01 02 03 の流れ */
+  .reason-flow li {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    font-size: 16px !important;
+    line-height: 1.8 !important;
+  }
+  
+  .reason-flow li span {
+    margin-right: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* 最後の強調 */
+  .reason-final-block .final-emphasis strong,
+  .reason-final-block .final-emphasis strong.reason-nowrap {
+    font-size: clamp(34px, 10vw, 48px) !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
   }
 }
 
@@ -4329,11 +4409,189 @@ svg {
 .retention-section .delay-11.is-visible { transition-delay: 2.0s; }
 
 @media (max-width: 768px) {
-  .retention-section {
-    padding: 70px 0;
+  .retention-section,
+  .retention-section * {
+    max-width: 100%;
+    box-sizing: border-box;
   }
+
+  .retention-section {
+    overflow-x: hidden;
+    padding: 72px 0;
+  }
+
   .retention-section::before {
     background: linear-gradient(135deg, rgba(247, 244, 234, 0.97) 0%, rgba(247, 244, 234, 0.88) 100%);
+  }
+
+  .retention-section .container {
+    width: calc(100% - 40px);
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .retention-content {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* タイトル */
+  .retention-content h2 {
+    font-size: clamp(34px, 9vw, 44px) !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* サブコピー */
+  .retention-sub-copy {
+    font-size: 18px !important;
+    line-height: 1.8 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* 共感ブロック */
+  .retention-empathy .empathy-title,
+  .retention-empathy li {
+    font-size: 16px !important;
+    line-height: 1.8 !important;
+  }
+
+  /* 本文 */
+  .retention-body {
+    font-size: 18px !important;
+    line-height: 1.9 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* タグ */
+  .retention-icons {
+    flex-wrap: wrap !important;
+  }
+
+  /* 強調ブロック */
+  .retention-emphasis p {
+    font-size: 20px !important;
+    line-height: 1.8 !important;
+  }
+
+  /* 大見出し */
+  .retention-core p {
+    font-size: clamp(32px, 8vw, 42px) !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* お喜びの声カード */
+  .retention-effects {
+    width: 100% !important;
+    padding: 28px 20px !important;
+  }
+
+  .retention-effects .effect-title,
+  .retention-effects li {
+    font-size: 16px !important;
+    line-height: 1.8 !important;
+    white-space: normal !important;
+  }
+
+  /* 最後のコピー */
+  .retention-closing p {
+    font-size: clamp(30px, 8vw, 40px) !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* ボタン */
+  .retention-cta .button {
+    width: min(86vw, 360px) !important;
+    min-height: 56px !important;
+    font-size: 16px !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* スマホ用「導入して終わりにしない進め方」最適化 */
+@media (max-width: 768px) {
+  .roadmap-section,
+  .roadmap-section * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .roadmap-section {
+    overflow-x: hidden;
+    padding: 72px 0 !important;
+  }
+
+  .roadmap-section .container {
+    width: calc(100% - 40px) !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+  }
+
+  .roadmap-section .copy-col {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .roadmap-section .pricing-cards {
+    display: block !important;
+  }
+
+  /* タイトル */
+  .roadmap-section .section-heading h2 {
+    font-size: clamp(32px, 8.5vw, 42px) !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* サブコピー */
+  .roadmap-section .section-heading p {
+    font-size: 17px !important;
+    line-height: 1.8 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* カード全体 */
+  .roadmap-section .price-card-new {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 28px 22px !important;
+    margin-bottom: 22px !important;
+  }
+
+  /* カード見出し */
+  .roadmap-section .price-card-new h3,
+  .roadmap-section .price-card-new h3.nowrap {
+    font-size: clamp(24px, 6.5vw, 30px) !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* カード本文 */
+  .roadmap-section .price-card-new p.price-desc,
+  .roadmap-section .price-card-new p.nowrap {
+    font-size: 16px !important;
+    line-height: 1.8 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
   }
 }
 
@@ -4371,9 +4629,9 @@ svg {
     padding-top: var(--header-height) !important;
     display: flex !important;
     flex-direction: column !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     align-items: center !important;
-    padding-bottom: 20px !important;
+    padding-bottom: 0 !important;
   }
 
   .hero-grid {
@@ -4387,7 +4645,8 @@ svg {
     width: 100% !important;
     display: flex !important;
     justify-content: center !important;
-    align-items: center !important;
+    align-items: flex-start !important;
+    margin-top: 8vh !important;
     z-index: 2 !important;
   }
 
@@ -4404,19 +4663,21 @@ svg {
   }
 
   .hero-title-main {
-    font-size: clamp(28px, 8vw, 42px) !important;
+    font-size: clamp(34px, 10vw, 46px) !important;
     text-align: center !important;
-    line-height: 1.3 !important;
+    line-height: 1.25 !important;
     margin-bottom: 20px !important;
+    white-space: nowrap !important;
   }
 
   .hero-sub-copy {
     text-align: center !important;
-    font-size: clamp(14px, 4vw, 18px) !important;
+    font-size: 16px !important;
     width: 100% !important;
     margin-left: auto !important;
     margin-right: auto !important;
-    line-height: 1.6 !important;
+    line-height: 1.7 !important;
+    white-space: nowrap !important;
   }
 
   .hero-sub-copy--lead {
@@ -4434,8 +4695,10 @@ svg {
   }
 
   .hero-buttons .button {
-    width: 100% !important;
-    max-width: 320px !important;
+    width: min(86vw, 360px) !important;
+    min-height: 56px !important;
+    font-size: 16px !important;
+    white-space: nowrap !important;
     margin: 0 !important;
   }
 
