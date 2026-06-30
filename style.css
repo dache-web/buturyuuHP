@@ -4612,7 +4612,7 @@ svg {
     letter-spacing: 0.08em !important;
     opacity: 0.12 !important;
     text-align: center !important;
-    margin: 0 auto 24px !important;
+    margin: 0 auto 12px !important;
     white-space: nowrap !important;
     z-index: 1 !important;
   }
@@ -4626,9 +4626,9 @@ svg {
 
   /* 4. ファーストビュー全体を1画面以内に収める */
   .hero {
-    min-height: 100vh !important;
-    height: 100vh !important;
-    padding-top: 48px !important;
+    min-height: 100svh !important;
+    height: 100svh !important;
+    padding-top: 0 !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
@@ -4644,17 +4644,34 @@ svg {
   }
 
   .hero-inner {
-    width: 100% !important;
+    width: calc(100% - 28px) !important;
     display: flex !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     align-items: flex-start !important;
     margin-top: 0 !important;
+    padding-top: calc(var(--header-height) + 8px) !important;
+    padding-right: 0 !important;
+    padding-bottom: 18px !important;
+    padding-left: 0 !important;
     z-index: 2 !important;
   }
 
   /* 5. メインコピー、サブコピーの中央配置と見切れ防止 */
+  .hero-copy-stack {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    align-items: flex-start !important;
+  }
+
+  .hero-copy-frame {
+    width: 100% !important;
+    align-items: flex-start !important;
+  }
+
   .hero-copy-minimal {
-    margin: 0 auto !important;
+    margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -4669,7 +4686,7 @@ svg {
     line-height: 1.3 !important;
     letter-spacing: -0.02em !important;
     text-align: center !important;
-    margin: 0 auto 28px !important;
+    margin: 0 auto 22px !important;
     max-width: 98vw !important;
     white-space: normal !important;
     word-break: keep-all !important;
@@ -4678,15 +4695,15 @@ svg {
 
   .hero-sub-copy {
     font-size: 16px !important;
-    line-height: 1.8 !important;
+    line-height: 1.7 !important;
     text-align: center !important;
-    margin: 0 auto 32px !important;
-    max-width: 88vw !important;
+    margin: 0 auto 24px !important;
+    max-width: 92vw !important;
     white-space: normal !important;
   }
 
   .hero-sub-copy--lead {
-    margin-bottom: 12px !important;
+    margin-bottom: 10px !important;
   }
 
   /* 6. ボタン: 縦並び */
@@ -4700,12 +4717,12 @@ svg {
   }
 
   .hero-buttons .button {
-    width: min(82vw, 340px) !important;
-    height: 56px !important;
-    min-height: 56px !important;
+    width: min(92vw, 348px) !important;
+    height: 54px !important;
+    min-height: 54px !important;
     font-size: 16px !important;
     border-radius: 999px !important;
-    margin: 0 auto 14px !important;
+    margin: 0 auto 12px !important;
     white-space: nowrap !important;
     display: flex !important;
     align-items: center !important;
@@ -4722,5 +4739,97 @@ svg {
 @media (min-width: 769px) {
   .sp-br {
     display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  #hero.hero {
+    min-height: 100svh !important;
+    height: 100svh !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    justify-content: flex-start !important;
+  }
+
+  #hero .hero-bg {
+    background-position: 62% bottom, center !important;
+  }
+
+  #hero .hero-inner {
+    width: calc(100% - 24px) !important;
+    min-height: 100svh !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    padding-top: calc(var(--header-height) + 8px) !important;
+    padding-right: 0 !important;
+    padding-bottom: 14px !important;
+    padding-left: 0 !important;
+  }
+
+  #hero .hero-copy-stack,
+  #hero .hero-copy-frame,
+  #hero .hero-copy-minimal {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  #hero .hero-copy-frame {
+    position: relative !important;
+  }
+
+  #hero .hero-copy-minimal {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    align-items: center !important;
+    text-align: center !important;
+    transform: translateX(-6px) !important;
+  }
+
+  #hero .hero-editorial-word {
+    position: absolute !important;
+    top: 0 !important;
+    left: 50% !important;
+    margin: 0 !important;
+    font-size: clamp(26px, 7.2vw, 32px) !important;
+    transform: translateX(-50%) !important;
+    pointer-events: none !important;
+  }
+
+  #hero .hero-title {
+    margin: 0 !important;
+  }
+
+  #hero .hero-title-main {
+    font-size: clamp(27px, 7.7vw, 35px) !important;
+    line-height: 1.15 !important;
+    margin: 0 auto 16px !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  #hero .hero-sub-copy {
+    max-width: 92vw !important;
+    margin: 0 auto 18px !important;
+    font-size: clamp(14px, 4vw, 16px) !important;
+    line-height: 1.55 !important;
+  }
+
+  #hero .hero-sub-copy--lead {
+    margin-bottom: 8px !important;
+  }
+
+  #hero .hero-buttons {
+    width: 100% !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+
+  #hero .hero-buttons .button {
+    width: min(90vw, 336px) !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    margin: 0 auto 10px !important;
+    font-size: 15px !important;
   }
 }
