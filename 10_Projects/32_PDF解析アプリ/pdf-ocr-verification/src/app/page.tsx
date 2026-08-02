@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import styles from "./page.module.css";
 import dynamic from "next/dynamic";
-import { PdfAnalysisData, TextElement } from "@/types/pdfAnalysis";
+import { PdfAnalysisData, DocumentAnalysis, PageAnalysis } from "@/types/pdfAnalysis";
 import { getActiveResult } from "@/lib/pdf/activeResult";
 import ExtractedTextPanel from "../components/ExtractedTextPanel";
 import TextElementsPanel from "../components/TextElementsPanel";
