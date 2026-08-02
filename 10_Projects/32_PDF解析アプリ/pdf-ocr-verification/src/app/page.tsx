@@ -3,11 +3,12 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import styles from "./page.module.css";
 import dynamic from "next/dynamic";
-import { PdfAnalysisData } from "@/types/pdfAnalysis";
+import { PdfAnalysisData, TextElement } from "@/types/pdfAnalysis";
 import { getActiveResult } from "@/lib/pdf/activeResult";
 import ExtractedTextPanel from "../components/ExtractedTextPanel";
 import TextElementsPanel from "../components/TextElementsPanel";
 import JsonPanel from "../components/JsonPanel";
+
 import type * as pdfjsLib from "pdfjs-dist";
 
 const PdfViewer = dynamic(() => import("../components/PdfViewer"), { ssr: false });
@@ -27,7 +28,7 @@ export default function Home() {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   
   // Tab state
-  const [activeTab, setActiveTab] = useState<"text" | "elements" | "table" | "json">("text");
+  const [activeTab, setActiveTab] = useState<"text" | "document" | "elements" | "json">("text");
   const [showOverlay, setShowOverlay] = useState(true);
 
   // Pagination state (shared between left and right)
@@ -220,6 +221,15 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  // 抽出操作（PdfViewerからのコールバック）
+  const handleElementsSelected = useCallback((ids: string[]) => {
+    if (ids.length > 0) {
+      setSelectedElementId(ids[0]);
+    } else {
+      setSelectedElementId(null);
+    }
+  }, []);
+
   // Get current page elements for overlay
   const currentPageElements = (() => {
     const page = analysisData?.pages.find(p => p.pageNumber === pdfCurrentPage);
@@ -302,8 +312,8 @@ export default function Home() {
             <PdfViewer 
               file={selectedFile} 
               onClear={handleClear}
-              selectedElementId={selectedElementId}
-              onElementClick={setSelectedElementId}
+              selectedElementIds={selectedElementId ? [selectedElementId] : []}
+              onElementsSelected={handleElementsSelected}
               showOverlay={showOverlay}
               pageElements={currentPageElements}
               currentPage={pdfCurrentPage}
@@ -316,23 +326,24 @@ export default function Home() {
           {/* 右側: 抽出結果タブ */}
           <div className={styles.tabsSection}>
             <div className={styles.tabList}>
+
               <div 
                 className={`${styles.tab} ${activeTab === "text" ? styles.active : ""}`}
                 onClick={() => setActiveTab("text")}
               >
-                抽出テキスト
+                ページ全文
+              </div>
+              <div 
+                className={`${styles.tab} ${activeTab === "document" ? styles.active : ""}`}
+                onClick={() => setActiveTab("document")}
+              >
+                文書全文
               </div>
               <div 
                 className={`${styles.tab} ${activeTab === "elements" ? styles.active : ""}`}
                 onClick={() => setActiveTab("elements")}
               >
                 文字要素
-              </div>
-              <div 
-                className={`${styles.tab} ${activeTab === "table" ? styles.active : ""}`}
-                onClick={() => setActiveTab("table")}
-              >
-                表
               </div>
               <div 
                 className={`${styles.tab} ${activeTab === "json" ? styles.active : ""}`}
@@ -346,7 +357,7 @@ export default function Home() {
               {isExtracting ? (
                 <p>ページ {pdfCurrentPage} の解析結果を準備しています……</p>
               ) : extractError ? (
-                <div className={styles.error}>PDFは表示できましたが、文字情報を取得できませんでした。<br/>{extractError}</div>
+                <div className={styles.error}>{extractError}</div>
               ) : analysisData ? (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: "1rem", flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -382,6 +393,8 @@ export default function Home() {
                     </div>
                   </div>
                   
+                  
+
                   {activeTab === "text" && (
                     <ExtractedTextPanel 
                       data={analysisData} 
@@ -395,8 +408,15 @@ export default function Home() {
                       })}
                     />
                   )}
+                  {activeTab === "document" && (
+                    <div>
+                      <h3>文書全文</h3>
+                      <pre style={{ whiteSpace: "pre-wrap", background: "var(--card-bg)", padding: "1rem", borderRadius: "8px" }}>
+                        {analysisData.pages.map(p => p.finalText).join("\n\n---\n\n")}
+                      </pre>
+                    </div>
+                  )}
                   {activeTab === "elements" && <TextElementsPanel data={analysisData} currentPage={pdfCurrentPage} selectedElementId={selectedElementId} onElementClick={setSelectedElementId} />}
-                  {activeTab === "table" && <p>ページ {pdfCurrentPage} の表解析は後工程で実装します。</p>}
                   {activeTab === "json" && <JsonPanel data={analysisData} currentPage={pdfCurrentPage} editedTexts={editedTexts} />}
                 </>
               ) : (

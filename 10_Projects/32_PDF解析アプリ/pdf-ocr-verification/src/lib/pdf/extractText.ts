@@ -15,6 +15,9 @@ export async function extractTextFromPdf(
     throw new Error("PDF text extraction must run in the browser.");
   }
   const pdfjsLib = await import("pdfjs-dist");
+  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+  }
   
   const arrayBuffer = await file.arrayBuffer();
   const data = new Uint8Array(arrayBuffer);

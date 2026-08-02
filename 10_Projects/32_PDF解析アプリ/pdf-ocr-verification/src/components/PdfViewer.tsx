@@ -8,8 +8,8 @@ import { TextElement } from "@/types/pdfAnalysis";
 interface PdfViewerProps {
   file: File;
   onClear: () => void;
-  selectedElementId?: string | null;
-  onElementClick?: (id: string) => void;
+  selectedElementIds?: string[];
+  onElementsSelected?: (ids: string[]) => void;
   showOverlay?: boolean;
   pageElements?: TextElement[];
   currentPage: number;
@@ -23,8 +23,8 @@ type FitMode = "width" | "page" | "none";
 export default function PdfViewer({ 
   file, 
   onClear, 
-  selectedElementId,
-  onElementClick,
+  selectedElementIds = [],
+  onElementsSelected,
   showOverlay = true,
   pageElements = [],
   currentPage,
@@ -42,6 +42,7 @@ export default function PdfViewer({
   
   // Track overlay state internally to react to size changes
   const [canvasSize, setCanvasSize] = useState<{width: number, height: number} | null>(null);
+
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -263,6 +264,14 @@ export default function PdfViewer({
     setScale(1.0);
   };
 
+  const handleElementClick = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (onElementsSelected) {
+      onElementsSelected([id]);
+    }
+  };
+
   // 常に一番外側の viewerSection を返すことで、DOMツリーの破壊を防ぎ、removeChildエラーを回避する
   return (
     <div className={styles.viewerSection}>
@@ -306,7 +315,9 @@ export default function PdfViewer({
           </div>
 
           <div className={styles.pdfScrollContainer} ref={containerRef}>
-            <div className={styles.canvasWrapper}>
+            <div 
+              className={styles.canvasWrapper}
+            >
               <canvas ref={canvasRef} className={styles.canvas}></canvas>
               
               {/* Overlay rendering */}
@@ -316,23 +327,25 @@ export default function PdfViewer({
                 >
                   {pageElements.map(el => {
                     const { x, y, width, height } = el.normalizedCoordinates;
-                    const isSelected = selectedElementId === el.id;
+                    const isSelected = selectedElementIds.includes(el.id);
                     
                     return (
                       <div
                         key={el.id}
-                        className={`${styles.textOverlayBox} ${isSelected ? styles.selectedOverlay : ''}`}
+                        className={`${styles.textOverlayBox} ${isSelected ? styles.selectedOverlay : ''} ${styles.clickableOverlay}`}
                         style={{
                           left: `${x * 100}%`,
                           top: `${y * 100}%`,
                           width: `${width * 100}%`,
                           height: `${height * 100}%`,
                         }}
-                        onClick={() => onElementClick?.(el.id)}
+                        onClick={(e) => handleElementClick(el.id, e)}
                         title={el.text}
                       />
                     );
                   })}
+                  
+
                 </div>
               )}
             </div>
