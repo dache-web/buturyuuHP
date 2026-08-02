@@ -3,10 +3,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import styles from "./page.module.css";
 import dynamic from "next/dynamic";
-import { PdfAnalysisData, DocumentAnalysis, PageAnalysis } from "@/types/pdfAnalysis";
+import { PdfAnalysisData } from "@/types/pdfAnalysis";
 import { getActiveResult } from "@/lib/pdf/activeResult";
 import ExtractedTextPanel from "../components/ExtractedTextPanel";
 import TextElementsPanel from "../components/TextElementsPanel";
+import RuleConnectionPanel from "../components/RuleConnectionPanel";
 import JsonPanel from "../components/JsonPanel";
 
 import type * as pdfjsLib from "pdfjs-dist";
@@ -243,6 +244,9 @@ export default function Home() {
         <h1>PDF・OCR精度検証ツール</h1>
         <p>PDFの読み取り精度、文字座標、表解析を検証するためのツールです。</p>
       </header>
+
+      {/* 新しく追加したルール接続確認領域 (GAS API) */}
+      <RuleConnectionPanel />
 
       {fileError && (
         <div className={styles.error}>
