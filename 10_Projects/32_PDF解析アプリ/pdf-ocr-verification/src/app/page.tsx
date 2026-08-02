@@ -8,7 +8,7 @@ import { getActiveResult } from "@/lib/pdf/activeResult";
 import ExtractedTextPanel from "../components/ExtractedTextPanel";
 import TextElementsPanel from "../components/TextElementsPanel";
 import JsonPanel from "../components/JsonPanel";
-import * as pdfjsLib from "pdfjs-dist";
+import type * as pdfjsLib from "pdfjs-dist";
 
 const PdfViewer = dynamic(() => import("../components/PdfViewer"), { ssr: false });
 
@@ -78,12 +78,26 @@ export default function Home() {
 
     setSelectedFile(file);
     setIsExtracting(true);
-    setFileInfo({
+    const newFileInfo = {
       name: file.name,
       size: (file.size / 1024 / 1024).toFixed(2) + " MB",
       type: file.type,
       lastModified: new Date(file.lastModified).toLocaleString(),
-    });
+    };
+    setFileInfo(newFileInfo);
+    
+    // Start text extraction independently from PDF Viewer
+    import("@/lib/pdf/extractText")
+      .then(({ extractTextFromPdf }) => extractTextFromPdf(file))
+      .then((data) => {
+        setAnalysisData(data);
+        setIsExtracting(false);
+      })
+      .catch((err) => {
+        console.error("Text extraction failed", err);
+        setExtractError("文字情報の取得に失敗しました。");
+        setIsExtracting(false);
+      });
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -129,16 +143,6 @@ export default function Home() {
       fileInputRef.current.value = "";
     }
   };
-
-  const handleExtractSuccess = useCallback((data: PdfAnalysisData) => {
-    setAnalysisData(data);
-    setIsExtracting(false);
-  }, []);
-
-  const handleExtractError = useCallback((errorStr: string) => {
-    setExtractError(errorStr);
-    setIsExtracting(false);
-  }, []);
 
   const handleDocumentLoad = useCallback((numPages: number) => {
     setPdfNumPages(numPages);
@@ -298,8 +302,6 @@ export default function Home() {
             <PdfViewer 
               file={selectedFile} 
               onClear={handleClear}
-              onExtractSuccess={handleExtractSuccess}
-              onExtractError={handleExtractError}
               selectedElementId={selectedElementId}
               onElementClick={setSelectedElementId}
               showOverlay={showOverlay}

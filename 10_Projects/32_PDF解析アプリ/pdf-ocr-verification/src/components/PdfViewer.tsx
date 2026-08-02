@@ -1,19 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import * as pdfjsLib from "pdfjs-dist";
+import type * as pdfjsLib from "pdfjs-dist";
 import styles from "../app/page.module.css";
-import { extractTextFromPdf } from "@/lib/pdf/extractText";
-import { PdfAnalysisData, TextElement } from "@/types/pdfAnalysis";
-
-// Set worker source
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+import { TextElement } from "@/types/pdfAnalysis";
 
 interface PdfViewerProps {
   file: File;
   onClear: () => void;
-  onExtractSuccess?: (data: PdfAnalysisData) => void;
-  onExtractError?: (error: string) => void;
   selectedElementId?: string | null;
   onElementClick?: (id: string) => void;
   showOverlay?: boolean;
@@ -29,8 +23,6 @@ type FitMode = "width" | "page" | "none";
 export default function PdfViewer({ 
   file, 
   onClear, 
-  onExtractSuccess, 
-  onExtractError,
   selectedElementId,
   onElementClick,
   showOverlay = true,
@@ -54,21 +46,18 @@ export default function PdfViewer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const loadingTaskRef = useRef<pdfjsLib.PDFDocumentLoadingTask | null>(null);
   const pdfDocumentRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
   
   // Use refs for callbacks to avoid dependency cycles
-  const onExtractSuccessRef = useRef(onExtractSuccess);
-  const onExtractErrorRef = useRef(onExtractError);
   const onDocumentLoadRef = useRef(onDocumentLoad);
   const onPdfLoadedRef = useRef(onPdfLoaded);
   
   useEffect(() => {
-    onExtractSuccessRef.current = onExtractSuccess;
-    onExtractErrorRef.current = onExtractError;
     onDocumentLoadRef.current = onDocumentLoad;
     onPdfLoadedRef.current = onPdfLoaded;
-  }, [onExtractSuccess, onExtractError, onDocumentLoad, onPdfLoaded]);
+  }, [onDocumentLoad, onPdfLoaded]);
 
   // 1. PDFファイル読込処理とテキスト抽出
   useEffect(() => {
@@ -91,7 +80,14 @@ export default function PdfViewer({
         }
 
         const data = new Uint8Array(arrayBuffer);
+        
+        const pdfjsLib = await import("pdfjs-dist");
+        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+        }
+        
         const loadingTask = pdfjsLib.getDocument({ data });
+        loadingTaskRef.current = loadingTask;
         
         const pdf = await loadingTask.promise;
         
@@ -108,24 +104,6 @@ export default function PdfViewer({
         
         if (onPdfLoadedRef.current) {
           onPdfLoadedRef.current(pdf);
-        }
-        
-        // Start text extraction in the background
-        try {
-          const fileInfo = {
-            name: file.name,
-            sizeBytes: file.size,
-            type: file.type
-          };
-          const analysisData = await extractTextFromPdf(pdf, fileInfo);
-          if (!cancelled && onExtractSuccessRef.current) {
-            onExtractSuccessRef.current(analysisData);
-          }
-        } catch (extError) {
-          console.error("Text extraction failed", extError);
-          if (!cancelled && onExtractErrorRef.current) {
-            onExtractErrorRef.current("文字情報の取得に失敗しました。");
-          }
         }
 
       } catch (err: unknown) {
@@ -144,12 +122,16 @@ export default function PdfViewer({
 
     return () => {
       cancelled = true;
-      if (pdfDocumentRef.current) {
-        console.log("DESTROYING OLD PDF DOCUMENT");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (pdfDocumentRef.current as any).destroy();
-        pdfDocumentRef.current = null;
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
       }
+      if (loadingTaskRef.current && typeof loadingTaskRef.current.destroy === "function") {
+        console.log("DESTROYING OLD PDF DOCUMENT");
+        loadingTaskRef.current.destroy();
+      }
+      loadingTaskRef.current = null;
+      pdfDocumentRef.current = null;
     };
   }, [file]);
 

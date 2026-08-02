@@ -1,5 +1,4 @@
-import * as pdfjsLib from "pdfjs-dist";
-import { TextItem } from "pdfjs-dist/types/src/display/api";
+import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import { PdfAnalysisData, PageAnalysis, TextElement, DocumentAnalysis } from "@/types/pdfAnalysis";
 import { calculateCoordinates } from "./coordinates";
 
@@ -7,14 +6,24 @@ const MIN_TEXT_LENGTH_PER_PAGE = 50;
 const MIN_TEXT_ITEMS_PER_PAGE = 10;
 
 export async function extractTextFromPdf(
-  pdfDocument: pdfjsLib.PDFDocumentProxy,
-  fileInfo: { name: string; sizeBytes: number; type: string }
+  file: File
 ): Promise<PdfAnalysisData> {
   const startedAt = new Date().toISOString();
   const docStartTime = performance.now();
   
-  const numPages = pdfDocument.numPages;
-  const pages: PageAnalysis[] = [];
+  if (typeof window === "undefined") {
+    throw new Error("PDF text extraction must run in the browser.");
+  }
+  const pdfjsLib = await import("pdfjs-dist");
+  
+  const arrayBuffer = await file.arrayBuffer();
+  const data = new Uint8Array(arrayBuffer);
+  const loadingTask = pdfjsLib.getDocument({ data });
+  const pdfDocument = await loadingTask.promise;
+  
+  try {
+    const numPages = pdfDocument.numPages;
+    const pages: PageAnalysis[] = [];
   
   let totalElementCount = 0;
   let totalTextLength = 0;
@@ -142,9 +151,9 @@ export async function extractTextFromPdf(
   const completedAt = new Date().toISOString();
   
   const documentAnalysis: DocumentAnalysis = {
-    fileName: fileInfo.name,
-    fileSize: fileInfo.sizeBytes,
-    mimeType: fileInfo.type,
+    fileName: file.name,
+    fileSize: file.size,
+    mimeType: file.type,
     pageCount: numPages,
     documentType,
     analysisMethod: "pdf_text",
@@ -160,4 +169,9 @@ export async function extractTextFromPdf(
     document: documentAnalysis,
     pages,
   };
+  } finally {
+    if (loadingTask && typeof loadingTask.destroy === "function") {
+      await loadingTask.destroy();
+    }
+  }
 }
