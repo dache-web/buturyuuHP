@@ -83,8 +83,12 @@ export default function ExtractionResultEditor({ activeField, assignment, onUpda
             </button>
             <button 
               onClick={() => onUpdateEditedText(null)}
-              disabled={assignment.editedText === null}
-              style={{ padding: "0.4rem 1rem", backgroundColor: "white", border: "1px solid #cbd5e1", color: "#475569", borderRadius: "4px", cursor: assignment.editedText === null ? "not-allowed" : "pointer" }}
+              disabled={
+                assignment.editedText === null ||
+                assignment.editedText === undefined ||
+                assignment.editedText === assignment.originalText
+              }
+              style={{ padding: "0.4rem 1rem", backgroundColor: "white", border: "1px solid #cbd5e1", color: "#475569", borderRadius: "4px", cursor: (assignment.editedText === null || assignment.editedText === undefined || assignment.editedText === assignment.originalText) ? "not-allowed" : "pointer" }}
             >
               元に戻す
             </button>

@@ -252,7 +252,10 @@ export default function Home() {
       if (!field) return;
 
       const method = field.selectionMethod;
-      if (method !== "click" && method !== "multi_click" && method !== "click_or_drag") return;
+      if (method !== "click" && method !== "multi_click" && method !== "click_or_drag") {
+        console.warn(`[PdfViewer] Unsupported selectionMethod for click: ${method}`);
+        return;
+      }
 
       const pageData = analysisData?.pages.find(p => p.pageNumber === pdfCurrentPage);
       if (!pageData) return;
@@ -279,10 +282,14 @@ export default function Home() {
           updatedAt: new Date().toISOString()
         };
 
+        console.log("ELEMENT_CLICKED", { elementId: ids[0], text: clickedEl.text, pageNumber: pdfCurrentPage });
+        console.log("ACTIVE_FIELD", { fieldId: field.fieldId, fieldName: field.fieldName, selectionMethod: method, multipleSelection: field.allowMultiple });
+        console.log("ASSIGNMENT_BEFORE", current);
+
         let newSelectedIds = [...current.selectedElementIds];
         const isAlreadySelected = newSelectedIds.includes(clickedEl.id);
 
-        if (method === "click") {
+        if (!field.allowMultiple || method === "click") {
           newSelectedIds = isAlreadySelected ? [] : [clickedEl.id];
         } else {
           if (isAlreadySelected) {
@@ -292,21 +299,25 @@ export default function Home() {
           }
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const selectedEls = newSelectedIds.map(id => elements.find(e => e.id === id)).filter(Boolean) as any[];
+        const allElements = analysisData?.pages.flatMap(p => p.pdfTextResult.elements) || [];
+        const selectedEls = newSelectedIds.map(id => allElements.find(e => e.id === id)).filter(Boolean) as import("@/types/pdfAnalysis").TextElement[];
         const sortedEls = sortElements(selectedEls);
         const text = joinElementsText(sortedEls.map(e => e.text), field.joinMethod);
 
+        const nextAssignment = {
+          ...current,
+          selectedElementIds: newSelectedIds,
+          pageNumbers: Array.from(new Set([...current.pageNumbers, pdfCurrentPage])),
+          originalText: text,
+          finalText: current.editedText !== null ? current.editedText : text,
+          updatedAt: new Date().toISOString()
+        };
+
+        console.log("ASSIGNMENT_AFTER", nextAssignment);
+
         return {
           ...prev,
-          [activeFieldId]: {
-            ...current,
-            selectedElementIds: newSelectedIds,
-            pageNumbers: [pdfCurrentPage],
-            originalText: text,
-            finalText: current.editedText !== null ? current.editedText : text,
-            updatedAt: new Date().toISOString()
-          }
+          [activeFieldId]: nextAssignment
         };
       });
     }
@@ -353,7 +364,8 @@ export default function Home() {
         const newAreas = [...current.selectionAreas, area];
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const selectedEls = newSelectedIds.map(id => elements.find(e => e.id === id)).filter(Boolean) as any[];
+        const allElements = analysisData?.pages.flatMap(p => p.pdfTextResult.elements) || [];
+        const selectedEls = newSelectedIds.map(id => allElements.find(e => e.id === id)).filter(Boolean) as import("@/types/pdfAnalysis").TextElement[];
         const sortedEls = sortElements(selectedEls);
         const text = joinElementsText(sortedEls.map(e => e.text), field.joinMethod);
 

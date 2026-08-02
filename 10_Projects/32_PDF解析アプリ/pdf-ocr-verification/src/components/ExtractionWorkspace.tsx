@@ -54,6 +54,7 @@ export default function ExtractionWorkspace({
           ...current,
           editedText: text,
           finalText: text !== null ? text : current.originalText,
+          isConfirmed: false,
           updatedAt: new Date().toISOString()
         }
       };

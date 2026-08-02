@@ -14,6 +14,17 @@ import {
   getChoicesUrl
 } from "./endpoints";
 
+
+function toBoolean(value: unknown): boolean {
+  return (
+    value === true ||
+    value === "TRUE" ||
+    value === "true" ||
+    value === 1 ||
+    value === "1"
+  );
+}
+
 /**
  * GAS APIからデータを取得し、エラーハンドリングを行う共通関数
  */
@@ -79,7 +90,7 @@ export async function getRules(): Promise<ExtractionRule[]> {
     usage: item["用途"] as string,
     outputMethod: item["出力方式"] as string,
     outputId: item["出力ID"] as string,
-    isActive: item["有効"] as boolean,
+    isActive: toBoolean(item["有効"]),
     displayOrder: Number(item["表示順"])
   }));
 }
@@ -96,13 +107,13 @@ export async function getFields(ruleId: string): Promise<ExtractionField[]> {
     description: item["項目説明"] as string,
     selectionMethod: item["選択方法"] as string,
     extractionUnit: item["抽出単位"] as string,
-    allowMultiple: item["複数選択"] as boolean,
+    allowMultiple: toBoolean(item["複数選択"]),
     joinMethod: item["結合方法"] as string,
     dataType: item["データ型"] as string,
-    isRequired: item["必須"] as boolean,
+    isRequired: toBoolean(item["必須"]),
     outputColumnName: item["出力列名"] as string,
     displayOrder: Number(item["表示順"]),
-    isActive: item["有効"] as boolean
+    isActive: toBoolean(item["有効"])
   }));
 }
 
@@ -119,11 +130,11 @@ export async function getOutputSettings(ruleId: string): Promise<OutputSetting> 
     outputMethod: data["出力方式"] as string,
     headerRow: Number(data["ヘッダー行"]),
     startColumn: data["開始列"] as string,
-    outputFileName: data["ファイル名を出力"] as boolean,
-    outputImportDate: data["取込日時を出力"] as boolean,
-    outputPageNumber: data["ページ番号を出力"] as boolean,
-    allowOverwrite: data["上書き可否"] as boolean,
-    isActive: data["有効"] as boolean
+    outputFileName: toBoolean(data["ファイル名出力"]),
+    outputImportDate: toBoolean(data["取込日時出力"]),
+    outputPageNumber: toBoolean(data["ページ数出力"]),
+    allowOverwrite: toBoolean(data["上書き許可"]),
+    isActive: toBoolean(data["有効"])
   };
 }
 
@@ -137,6 +148,6 @@ export async function getChoices(type: string): Promise<ChoiceItem[]> {
     value: item["値"] as string,
     label: item["表示名"] as string,
     displayOrder: Number(item["表示順"]),
-    isActive: item["有効"] as boolean
+    isActive: toBoolean(item["有効"])
   }));
 }
