@@ -81,6 +81,7 @@ export default function ExtractionResultEditor({ activeField, assignment, onUpda
             >
               {assignment.isConfirmed ? "確定済み (再確定)" : "確定"}
             </button>
+            {/* 
             <button 
               onClick={() => onUpdateEditedText(null)}
               disabled={
@@ -92,6 +93,7 @@ export default function ExtractionResultEditor({ activeField, assignment, onUpda
             >
               元に戻す
             </button>
+            */}
             <button 
               onClick={onReSelect}
               style={{ padding: "0.4rem 1rem", backgroundColor: "white", border: "1px solid #cbd5e1", color: "#475569", borderRadius: "4px", cursor: "pointer" }}

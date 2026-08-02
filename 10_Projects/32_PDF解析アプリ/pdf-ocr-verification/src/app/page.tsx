@@ -282,10 +282,6 @@ export default function Home() {
           updatedAt: new Date().toISOString()
         };
 
-        console.log("ELEMENT_CLICKED", { elementId: ids[0], text: clickedEl.text, pageNumber: pdfCurrentPage });
-        console.log("ACTIVE_FIELD", { fieldId: field.fieldId, fieldName: field.fieldName, selectionMethod: method, multipleSelection: field.allowMultiple });
-        console.log("ASSIGNMENT_BEFORE", current);
-
         let newSelectedIds = [...current.selectedElementIds];
         const isAlreadySelected = newSelectedIds.includes(clickedEl.id);
 
@@ -312,8 +308,6 @@ export default function Home() {
           finalText: current.editedText !== null ? current.editedText : text,
           updatedAt: new Date().toISOString()
         };
-
-        console.log("ASSIGNMENT_AFTER", nextAssignment);
 
         return {
           ...prev,
