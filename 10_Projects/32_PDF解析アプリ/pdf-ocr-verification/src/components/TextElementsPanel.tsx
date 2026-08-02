@@ -40,7 +40,6 @@ export default function TextElementsPanel({ data, currentPage, selectedElementId
               <tr>
                 <th>読順</th>
                 <th>文字列</th>
-                <th>信頼度</th>
                 <th>X</th>
                 <th>Y</th>
                 <th>W</th>
@@ -55,19 +54,6 @@ export default function TextElementsPanel({ data, currentPage, selectedElementId
                 if (selectedElementId === el.id) {
                   rowClass = styles.selectedRow;
                 }
-                
-                let confidenceStyle = {};
-                let confidenceText = "-";
-                
-                if (el.confidence !== undefined && el.confidence !== null) {
-                  confidenceText = `${Math.round(el.confidence * 100)}%`;
-                  if (el.confidence < 0.7) {
-                    confidenceStyle = { backgroundColor: '#fee2e2', color: '#991b1b' }; // Red for < 70%
-                  } else if (el.confidence < 0.9) {
-                    confidenceStyle = { backgroundColor: '#fef3c7', color: '#92400e' }; // Yellow for < 90%
-                  }
-                }
-
                 return (
                   <tr 
                     key={el.id} 
@@ -79,12 +65,10 @@ export default function TextElementsPanel({ data, currentPage, selectedElementId
                       }
                     }}
                     className={rowClass}
-                    style={selectedElementId === el.id ? {} : confidenceStyle}
                     onClick={() => onElementClick(el.id)}
                   >
                     <td>{el.readingOrder}</td>
                     <td className={styles.textCell} title={el.text}>{el.text}</td>
-                    <td>{confidenceText}</td>
                     <td>{el.normalizedCoordinates.x.toFixed(4)}</td>
                     <td>{el.normalizedCoordinates.y.toFixed(4)}</td>
                     <td>{el.normalizedCoordinates.width.toFixed(4)}</td>

@@ -95,18 +95,16 @@ export async function extractTextFromPdf(
     
     const processingTimeMs = Math.round(performance.now() - pageStartTime);
     
-    const requiresOcr = pageTextLength < MIN_TEXT_LENGTH_PER_PAGE && elements.length < MIN_TEXT_ITEMS_PER_PAGE;
-    
     let pageType: "text_page" | "sparse_text_page" | "image_page" | "unknown_page" = "unknown_page";
     if (elements.length === 0 && pageTextLength === 0) {
       pageType = "image_page";
-    } else if (requiresOcr) {
+    } else if (pageTextLength < MIN_TEXT_LENGTH_PER_PAGE && elements.length < MIN_TEXT_ITEMS_PER_PAGE) {
       pageType = "sparse_text_page";
     } else {
       pageType = "text_page";
     }
 
-    if (!requiresOcr) {
+    if (pageType === "text_page" || pageType === "sparse_text_page") {
       pagesWithSufficientText++;
     }
     
@@ -123,26 +121,18 @@ export async function extractTextFromPdf(
         elementCount: elements.length,
         textLength: pageTextLength,
       },
-      ocrResult: {
-        status: process.env.NEXT_PUBLIC_ENABLE_OCR === 'true' ? "not_started" : "disabled",
-        text: "",
-        elements: [],
-        elementCount: 0,
-        textLength: 0,
-      },
       finalText: pageText,
       pageType,
-      requiresOcr,
       processingTimeMs,
     });
   }
   
-  let documentType: "text_pdf" | "scanned_pdf" | "mixed_pdf" | "unknown" = "unknown";
+  let documentType: "text_pdf" | "mixed_pdf" | "image_pdf" | "unknown" = "unknown";
   if (numPages > 0) {
     if (pagesWithSufficientText === numPages) {
       documentType = "text_pdf";
     } else if (pagesWithSufficientText === 0) {
-      documentType = "scanned_pdf";
+      documentType = "image_pdf";
     } else {
       documentType = "mixed_pdf";
     }

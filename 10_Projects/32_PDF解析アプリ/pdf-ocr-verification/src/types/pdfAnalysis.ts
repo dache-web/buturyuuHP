@@ -52,23 +52,10 @@ export interface PageAnalysis {
     textLength: number;
   };
   
-  ocrResult: {
-    status: "not_started" | "pending" | "processing" | "success" | "failed" | "disabled";
-    text: string;
-    elements: TextElement[];
-    elementCount: number;
-    textLength: number;
-    provider?: string;
-    averageConfidence?: number | null;
-    error?: string;
-    tables?: TableAnalysis[];
-  };
-  
   editedText?: string | null;
   finalText: string;
   
   pageType: "text_page" | "sparse_text_page" | "image_page" | "unknown_page";
-  requiresOcr: boolean;
   processingTimeMs: number;
   warnings?: string[];
 }
@@ -78,20 +65,13 @@ export interface DocumentAnalysis {
   fileSize: number;
   mimeType: string;
   pageCount: number;
-  documentType: "text_pdf" | "scanned_pdf" | "mixed_pdf" | "unknown";
+  documentType: "text_pdf" | "mixed_pdf" | "image_pdf" | "unknown";
   analysisMethod: string;
   startedAt: string;
   completedAt: string;
   processingTimeMs: number;
   totalElementCount: number;
   totalTextLength: number;
-  
-  // OCR specific fields
-  requiresOcrPages?: number[];
-  ocrCompletedPages?: number;
-  ocrFailedPages?: number;
-  ocrProvider?: string;
-  totalOcrProcessingTimeMs?: number;
 }
 
 export interface PdfAnalysisData {

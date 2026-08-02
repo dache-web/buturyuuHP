@@ -146,6 +146,7 @@ export default function PdfViewer({
       cancelled = true;
       if (pdfDocumentRef.current) {
         console.log("DESTROYING OLD PDF DOCUMENT");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (pdfDocumentRef.current as any).destroy();
         pdfDocumentRef.current = null;
       }

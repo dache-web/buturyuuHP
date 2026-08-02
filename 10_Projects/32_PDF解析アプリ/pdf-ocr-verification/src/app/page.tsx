@@ -36,35 +36,13 @@ export default function Home() {
 
   // Edited texts state
   const [editedTexts, setEditedTexts] = useState<Record<number, string>>({});
-
-  // OCR state
-  const [isOcring, setIsOcring] = useState<boolean>(false);
-  const [ocrProgress, setOcrProgress] = useState<{ current: number; total: number; currentPageNum: number; completed: number; failed: number } | null>(null);
-  const [ocrConfigured, setOcrConfigured] = useState<boolean | null>(null);
-  const [ocrMissingSettings, setOcrMissingSettings] = useState<string[]>([]);
   
+
   const pdfDocumentProxyRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tabContentScrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_ENABLE_OCR !== 'true') {
-      setOcrConfigured(false);
-      return;
-    }
-
-    fetch("/api/ocr/status")
-      .then(res => res.json())
-      .then(data => {
-        setOcrConfigured(data.configured);
-        setOcrMissingSettings(data.missingSettings || []);
-      })
-      .catch(err => {
-        console.error("Failed to fetch OCR status", err);
-        setOcrConfigured(false);
-      });
-  }, []);
 
   const validateAndSetFile = (file: File) => {
     setFileError(null);
@@ -184,124 +162,12 @@ export default function Home() {
     }
   }, [pdfCurrentPage, activeTab]);
 
-  const runOcrForPages = async (pageNumbers: number[]) => {
-    if (!analysisData || !pdfDocumentProxyRef.current || pageNumbers.length === 0) return;
-    
-    if (ocrConfigured === false) {
-      alert("Google Document AIが未設定です。\nOCRを実行するには環境設定が必要です。\n不足している設定:\n" + ocrMissingSettings.join("\n"));
-      return;
-    }
-    
-    setIsOcring(true);
-    let completed = 0;
-    let failed = 0;
-    
-    for (let i = 0; i < pageNumbers.length; i++) {
-      const pageNum = pageNumbers[i];
-      setOcrProgress({
-        current: i + 1,
-        total: pageNumbers.length,
-        currentPageNum: pageNum,
-        completed,
-        failed
-      });
-
-      setAnalysisData(prev => {
-        if (!prev) return prev;
-        const newData = { ...prev };
-        const pageIdx = newData.pages.findIndex(p => p.pageNumber === pageNum);
-        if (pageIdx !== -1) {
-          const newPage = { ...newData.pages[pageIdx] };
-          newPage.ocrResult = { ...newPage.ocrResult, status: "processing" };
-          newData.pages[pageIdx] = newPage;
-        }
-        return newData;
-      });
-
-      try {
-        const { renderPageToImageBase64 } = await import("@/lib/pdf/renderToImage");
-        const imageBase64 = await renderPageToImageBase64(pdfDocumentProxyRef.current, pageNum);
-
-        const res = await fetch("/api/ocr/page", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            documentId: selectedFile?.name,
-            pageNumber: pageNum,
-            imageBase64,
-            provider: "google_document_ai"
-          })
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error?.message || `OCR API failed: ${res.statusText}`);
-        }
-
-        const ocrResponse = await res.json();
-        
-        setAnalysisData(prev => {
-          if (!prev) return prev;
-          const newData = { ...prev };
-          const pageIdx = newData.pages.findIndex(p => p.pageNumber === pageNum);
-          if (pageIdx !== -1) {
-            const newPage = { ...newData.pages[pageIdx] };
-            newPage.ocrResult = {
-              ...newPage.ocrResult,
-              ...ocrResponse.ocrResult,
-              status: "success"
-            };
-            const active = getActiveResult(newPage, editedTexts[pageNum]);
-            newPage.finalText = active.finalText;
-            newData.pages[pageIdx] = newPage;
-          }
-          return newData;
-        });
-        completed++;
-      } catch (err: unknown) {
-        console.error("OCR failed for page", pageNum, err);
-        failed++;
-        setAnalysisData(prev => {
-          if (!prev) return prev;
-          const newData = { ...prev };
-          const pageIdx = newData.pages.findIndex(p => p.pageNumber === pageNum);
-          if (pageIdx !== -1) {
-            const newPage = { ...newData.pages[pageIdx] };
-            newPage.ocrResult = {
-              ...newPage.ocrResult,
-              status: "failed",
-              error: err instanceof Error ? err.message : String(err)
-            };
-            const active = getActiveResult(newPage, editedTexts[pageNum]);
-            newPage.finalText = active.finalText;
-            newData.pages[pageIdx] = newPage;
-          }
-          return newData;
-        });
-      }
-    }
-    
-    setAnalysisData(prev => {
-      if (!prev) return prev;
-      const newData = { ...prev };
-      newData.document = {
-        ...newData.document,
-        ocrCompletedPages: (newData.document.ocrCompletedPages || 0) + completed,
-        ocrFailedPages: (newData.document.ocrFailedPages || 0) + failed,
-      };
-      return newData;
-    });
-
-    setIsOcring(false);
-    setOcrProgress(null);
-  };
 
   const downloadJson = () => {
     if (!analysisData) return;
     
     const exportData = {
       ...analysisData,
-      ocrEnabled: process.env.NEXT_PUBLIC_ENABLE_OCR === 'true',
       pages: analysisData.pages.map(page => {
         const active = getActiveResult(page, editedTexts[page.pageNumber]);
         return {
@@ -356,8 +222,6 @@ export default function Home() {
     if (!page) return [];
     return getActiveResult(page, editedTexts[pdfCurrentPage]).elements;
   })();
-
-  const pagesNeedingOcr = analysisData?.pages.filter(p => p.requiresOcr && p.ocrResult?.status !== 'success').map(p => p.pageNumber) || [];
 
   return (
     <main className={styles.container}>
@@ -426,34 +290,7 @@ export default function Home() {
 
       {selectedFile && (
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
-          {process.env.NEXT_PUBLIC_ENABLE_OCR === 'true' && pagesNeedingOcr.length > 0 && !isOcring && (
-            <div style={{ padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '4px', marginBottom: '1rem' }}>
-              <p style={{ margin: '0 0 0.5rem 0', color: '#991b1b', fontWeight: 'bold' }}>
-                {pagesNeedingOcr.length}ページでOCR処理が必要です。（対象ページ: {pagesNeedingOcr.join(', ')}）
-              </p>
-              {ocrConfigured === false ? (
-                <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.9rem' }}>
-                  現在OCRサービス（Google Document AI）が未設定のため、解析できません。環境設定をご確認ください。
-                </p>
-              ) : (
-                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => runOcrForPages(pagesNeedingOcr)}>
-                  OCR必要ページを解析
-                </button>
-              )}
-            </div>
-          )}
-          
-          {isOcring && ocrProgress && (
-            <div style={{ padding: '1rem', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px', marginBottom: '1rem' }}>
-              <p style={{ margin: '0 0 0.5rem 0', color: '#1d4ed8', fontWeight: 'bold' }}>
-                OCR処理中... ({ocrProgress.current} / {ocrProgress.total} ページ完了)
-              </p>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: '#3b82f6' }}>
-                現在：{ocrProgress.currentPageNum}ページ目
-                (成功: {ocrProgress.completed}, 失敗: {ocrProgress.failed})
-              </p>
-            </div>
-          )}
+
 
           <div className={styles.layout}>
             {/* 左側: PDFプレビュー */}
@@ -554,7 +391,6 @@ export default function Home() {
                         delete newObj[pdfCurrentPage]; 
                         return newObj; 
                       })}
-                      onRunOcr={(pageNum) => runOcrForPages([pageNum])}
                     />
                   )}
                   {activeTab === "elements" && <TextElementsPanel data={analysisData} currentPage={pdfCurrentPage} selectedElementId={selectedElementId} onElementClick={setSelectedElementId} />}
