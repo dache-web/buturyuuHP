@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type * as pdfjsLib from "pdfjs-dist";
 import styles from "../app/page.module.css";
 import { TextElement } from "@/types/pdfAnalysis";
+import { ExtractionAssignment, SelectionArea } from "@/types/extractionAssignment";
 
 interface PdfViewerProps {
   file: File;
@@ -16,6 +17,9 @@ interface PdfViewerProps {
   onPageChange?: (page: number) => void;
   onDocumentLoad?: (numPages: number) => void;
   onPdfLoaded?: (pdf: pdfjsLib.PDFDocumentProxy) => void;
+  activeAssignment?: ExtractionAssignment;
+  otherAssignedElementIds?: string[];
+  onSelectionRectangle?: (area: SelectionArea) => void;
 }
 
 type FitMode = "width" | "page" | "none";
@@ -30,7 +34,10 @@ export default function PdfViewer({
   currentPage,
   onPageChange,
   onDocumentLoad,
-  onPdfLoaded
+  onPdfLoaded,
+  activeAssignment,
+  otherAssignedElementIds = [],
+  onSelectionRectangle
 }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState<number>(1.0);
@@ -43,6 +50,9 @@ export default function PdfViewer({
   // Track overlay state internally to react to size changes
   const [canvasSize, setCanvasSize] = useState<{width: number, height: number} | null>(null);
 
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null);
+  const [dragCurrent, setDragCurrent] = useState<{x: number, y: number} | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -272,6 +282,40 @@ export default function PdfViewer({
     }
   };
 
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onSelectionRectangle) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    setIsDragging(true);
+    setDragStart({ x, y });
+    setDragCurrent({ x, y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !dragStart) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    setDragCurrent({ x, y });
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging && dragStart && dragCurrent && onSelectionRectangle) {
+      const x = Math.min(dragStart.x, dragCurrent.x);
+      const y = Math.min(dragStart.y, dragCurrent.y);
+      const width = Math.abs(dragCurrent.x - dragStart.x);
+      const height = Math.abs(dragCurrent.y - dragStart.y);
+      
+      if (width > 0.01 && height > 0.01) {
+        onSelectionRectangle({ pageNumber: currentPage, x, y, width, height });
+      }
+    }
+    setIsDragging(false);
+    setDragStart(null);
+    setDragCurrent(null);
+  };
+
   // 常に一番外側の viewerSection を返すことで、DOMツリーの破壊を防ぎ、removeChildエラーを回避する
   return (
     <div className={styles.viewerSection}>
@@ -321,23 +365,38 @@ export default function PdfViewer({
               <canvas ref={canvasRef} className={styles.canvas}></canvas>
               
               {/* Overlay rendering */}
-              {showOverlay && canvasSize && pageElements.length > 0 && (
+              {showOverlay && canvasSize && (pageElements.length > 0 || isDragging) && (
                 <div 
                   className={styles.overlayContainer} 
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  style={{ cursor: onSelectionRectangle ? 'crosshair' : 'default' }}
                 >
                   {pageElements.map(el => {
                     const { x, y, width, height } = el.normalizedCoordinates;
-                    const isSelected = selectedElementIds.includes(el.id);
+                    // 以前の selectedElementIds または現在の抽出項目の選択
+                    const isSelected = selectedElementIds.includes(el.id) || (activeAssignment?.selectedElementIds.includes(el.id));
+                    const isOtherAssigned = otherAssignedElementIds.includes(el.id);
                     
+                    let bgClass = '';
+                    if (isSelected) {
+                      bgClass = styles.selectedOverlay; // 既存のアクティブ色
+                    } else if (isOtherAssigned) {
+                      bgClass = styles.otherAssignedOverlay || ''; // 後で追加するかインラインスタイル
+                    }
+
                     return (
                       <div
                         key={el.id}
-                        className={`${styles.textOverlayBox} ${isSelected ? styles.selectedOverlay : ''} ${styles.clickableOverlay}`}
+                        className={`${styles.textOverlayBox} ${bgClass} ${styles.clickableOverlay}`}
                         style={{
                           left: `${x * 100}%`,
                           top: `${y * 100}%`,
                           width: `${width * 100}%`,
                           height: `${height * 100}%`,
+                          ...(isOtherAssigned && !isSelected ? { backgroundColor: 'rgba(100, 116, 139, 0.2)', border: '1px solid rgba(100, 116, 139, 0.4)' } : {})
                         }}
                         onClick={(e) => handleElementClick(el.id, e)}
                         title={el.text}
@@ -345,6 +404,21 @@ export default function PdfViewer({
                     );
                   })}
                   
+                  {isDragging && dragStart && dragCurrent && (
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        left: `${Math.min(dragStart.x, dragCurrent.x) * 100}%`,
+                        top: `${Math.min(dragStart.y, dragCurrent.y) * 100}%`,
+                        width: `${Math.abs(dragCurrent.x - dragStart.x) * 100}%`,
+                        height: `${Math.abs(dragCurrent.y - dragStart.y) * 100}%`,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        border: '2px solid rgba(59, 130, 246, 0.8)',
+                        pointerEvents: 'none',
+                        zIndex: 100
+                      }}
+                    />
+                  )}
 
                 </div>
               )}

@@ -9,6 +9,12 @@ import ExtractedTextPanel from "../components/ExtractedTextPanel";
 import TextElementsPanel from "../components/TextElementsPanel";
 import RuleConnectionPanel from "../components/RuleConnectionPanel";
 import JsonPanel from "../components/JsonPanel";
+import ExtractionWorkspace from "../components/ExtractionWorkspace";
+import { ExtractionField } from "@/lib/gas/types";
+import { ExtractionAssignment, SelectionArea } from "@/types/extractionAssignment";
+import { getElementsInSelectionArea } from "@/lib/extraction/selectElements";
+import { sortElements } from "@/lib/extraction/sortElements";
+import { joinElementsText } from "@/lib/extraction/joinElements";
 
 import type * as pdfjsLib from "pdfjs-dist";
 
@@ -29,8 +35,14 @@ export default function Home() {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   
   // Tab state
-  const [activeTab, setActiveTab] = useState<"text" | "document" | "elements" | "json">("text");
+  const [activeTab, setActiveTab] = useState<"text" | "document" | "elements" | "json" | "extraction">("text");
   const [showOverlay, setShowOverlay] = useState(true);
+
+  // Extraction Workspace state
+  const [activeRuleId, setActiveRuleId] = useState<string | null>(null);
+  const [fields, setFields] = useState<ExtractionField[]>([]);
+  const [assignments, setAssignments] = useState<Record<string, ExtractionAssignment>>({});
+  const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
 
   // Pagination state (shared between left and right)
   const [pdfCurrentPage, setPdfCurrentPage] = useState<number>(1);
@@ -94,6 +106,9 @@ export default function Home() {
       .then((data) => {
         setAnalysisData(data);
         setIsExtracting(false);
+        // Clear previous assignments when new PDF is loaded
+        setAssignments({});
+        setActiveFieldId(null);
       })
       .catch((err) => {
         console.error("Text extraction failed", err);
@@ -144,6 +159,8 @@ export default function Home() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    setAssignments({});
+    setActiveFieldId(null);
   };
 
   const handleDocumentLoad = useCallback((numPages: number) => {
@@ -229,7 +246,249 @@ export default function Home() {
     } else {
       setSelectedElementId(null);
     }
-  }, []);
+    
+    if (activeFieldId && activeTab === "extraction" && ids.length > 0) {
+      const field = fields.find(f => f.fieldId === activeFieldId);
+      if (!field) return;
+
+      const method = field.selectionMethod;
+      if (method !== "click" && method !== "multi_click" && method !== "click_or_drag") return;
+
+      const pageData = analysisData?.pages.find(p => p.pageNumber === pdfCurrentPage);
+      if (!pageData) return;
+
+      const elements = pageData.pdfTextResult.elements;
+      const clickedEl = elements.find(el => el.id === ids[0]);
+      if (!clickedEl) return;
+
+      setAssignments(prev => {
+        const current = prev[activeFieldId] || {
+          fieldId: activeFieldId,
+          ruleId: activeRuleId!,
+          fieldName: field.fieldName,
+          selectionMethod: method,
+          pageNumbers: [],
+          selectedElementIds: [],
+          selectionAreas: [],
+          originalText: "",
+          editedText: null,
+          finalText: "",
+          joinMethod: field.joinMethod,
+          dataType: field.dataType,
+          isConfirmed: false,
+          updatedAt: new Date().toISOString()
+        };
+
+        let newSelectedIds = [...current.selectedElementIds];
+        const isAlreadySelected = newSelectedIds.includes(clickedEl.id);
+
+        if (method === "click") {
+          newSelectedIds = isAlreadySelected ? [] : [clickedEl.id];
+        } else {
+          if (isAlreadySelected) {
+            newSelectedIds = newSelectedIds.filter(id => id !== clickedEl.id);
+          } else {
+            newSelectedIds.push(clickedEl.id);
+          }
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const selectedEls = newSelectedIds.map(id => elements.find(e => e.id === id)).filter(Boolean) as any[];
+        const sortedEls = sortElements(selectedEls);
+        const text = joinElementsText(sortedEls.map(e => e.text), field.joinMethod);
+
+        return {
+          ...prev,
+          [activeFieldId]: {
+            ...current,
+            selectedElementIds: newSelectedIds,
+            pageNumbers: [pdfCurrentPage],
+            originalText: text,
+            finalText: current.editedText !== null ? current.editedText : text,
+            updatedAt: new Date().toISOString()
+          }
+        };
+      });
+    }
+  }, [activeFieldId, activeTab, fields, activeRuleId, analysisData, pdfCurrentPage]);
+
+  const handleSelectionRectangle = useCallback((area: SelectionArea) => {
+    if (activeFieldId && activeTab === "extraction") {
+      const field = fields.find(f => f.fieldId === activeFieldId);
+      if (!field) return;
+
+      const method = field.selectionMethod;
+      if (method !== "rectangle" && method !== "click_or_drag") return;
+
+      const pageData = analysisData?.pages.find(p => p.pageNumber === pdfCurrentPage);
+      if (!pageData) return;
+
+      const elements = pageData.pdfTextResult.elements;
+      const intersectedElements = getElementsInSelectionArea(elements, area);
+      
+      if (intersectedElements.length === 0) return;
+
+      setAssignments(prev => {
+        const current = prev[activeFieldId] || {
+          fieldId: activeFieldId,
+          ruleId: activeRuleId!,
+          fieldName: field.fieldName,
+          selectionMethod: method,
+          pageNumbers: [],
+          selectedElementIds: [],
+          selectionAreas: [],
+          originalText: "",
+          editedText: null,
+          finalText: "",
+          joinMethod: field.joinMethod,
+          dataType: field.dataType,
+          isConfirmed: false,
+          updatedAt: new Date().toISOString()
+        };
+
+        const newIds = new Set(current.selectedElementIds);
+        intersectedElements.forEach(el => newIds.add(el.id));
+        const newSelectedIds = Array.from(newIds);
+
+        const newAreas = [...current.selectionAreas, area];
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const selectedEls = newSelectedIds.map(id => elements.find(e => e.id === id)).filter(Boolean) as any[];
+        const sortedEls = sortElements(selectedEls);
+        const text = joinElementsText(sortedEls.map(e => e.text), field.joinMethod);
+
+        return {
+          ...prev,
+          [activeFieldId]: {
+            ...current,
+            selectedElementIds: newSelectedIds,
+            selectionAreas: newAreas,
+            pageNumbers: Array.from(new Set([...current.pageNumbers, pdfCurrentPage])),
+            originalText: text,
+            finalText: current.editedText !== null ? current.editedText : text,
+            updatedAt: new Date().toISOString()
+          }
+        };
+      });
+    }
+  }, [activeFieldId, activeTab, fields, activeRuleId, analysisData, pdfCurrentPage]);
+
+  const handlePageSelect = useCallback((field: ExtractionField) => {
+    if (!analysisData || !activeRuleId) return;
+    const pageData = analysisData.pages.find(p => p.pageNumber === pdfCurrentPage);
+    if (!pageData) return;
+    
+    const text = pageData.finalText;
+    const elements = pageData.pdfTextResult.elements;
+
+    setAssignments(prev => ({
+      ...prev,
+      [field.fieldId]: {
+        fieldId: field.fieldId,
+        ruleId: activeRuleId,
+        fieldName: field.fieldName,
+        selectionMethod: "page",
+        pageNumbers: [pdfCurrentPage],
+        selectedElementIds: elements.map(e => e.id),
+        selectionAreas: [{ pageNumber: pdfCurrentPage, x: 0, y: 0, width: 1, height: 1 }],
+        originalText: text,
+        editedText: null,
+        finalText: text,
+        joinMethod: field.joinMethod,
+        dataType: field.dataType,
+        isConfirmed: false,
+        updatedAt: new Date().toISOString()
+      }
+    }));
+  }, [analysisData, pdfCurrentPage, activeRuleId]);
+
+  const handleMultiPageSelect = useCallback((field: ExtractionField, start: number, end: number) => {
+    if (!analysisData || !activeRuleId) return;
+    
+    if (start > end || start < 1 || end > analysisData.pages.length) {
+      alert("ページ指定が不正です");
+      return;
+    }
+
+    const targetPages = analysisData.pages.filter(p => p.pageNumber >= start && p.pageNumber <= end);
+    const textChunks: string[] = [];
+    const allElementIds: string[] = [];
+    const pageNumbers: number[] = [];
+    const selectionAreas: SelectionArea[] = [];
+
+    targetPages.forEach(p => {
+      textChunks.push(`===== Page ${p.pageNumber} =====\n${p.finalText}`);
+      allElementIds.push(...p.pdfTextResult.elements.map(e => e.id));
+      pageNumbers.push(p.pageNumber);
+      selectionAreas.push({ pageNumber: p.pageNumber, x: 0, y: 0, width: 1, height: 1 });
+    });
+
+    const text = textChunks.join("\n\n");
+
+    setAssignments(prev => ({
+      ...prev,
+      [field.fieldId]: {
+        fieldId: field.fieldId,
+        ruleId: activeRuleId,
+        fieldName: field.fieldName,
+        selectionMethod: "multi_page",
+        pageNumbers,
+        selectedElementIds: allElementIds,
+        selectionAreas,
+        originalText: text,
+        editedText: null,
+        finalText: text,
+        joinMethod: field.joinMethod,
+        dataType: field.dataType,
+        isConfirmed: false,
+        updatedAt: new Date().toISOString()
+      }
+    }));
+  }, [analysisData, activeRuleId]);
+
+  const handleDocumentSelect = useCallback((field: ExtractionField) => {
+    if (!analysisData || !activeRuleId) return;
+    
+    const textChunks: string[] = [];
+    const allElementIds: string[] = [];
+    const pageNumbers: number[] = [];
+    const selectionAreas: SelectionArea[] = [];
+
+    analysisData.pages.forEach(p => {
+      textChunks.push(p.finalText);
+      allElementIds.push(...p.pdfTextResult.elements.map(e => e.id));
+      pageNumbers.push(p.pageNumber);
+      selectionAreas.push({ pageNumber: p.pageNumber, x: 0, y: 0, width: 1, height: 1 });
+    });
+
+    // 既存の文書結合（\n\n---\n\n）に近い形で
+    const text = textChunks.join("\n\n---\n\n");
+
+    setAssignments(prev => ({
+      ...prev,
+      [field.fieldId]: {
+        fieldId: field.fieldId,
+        ruleId: activeRuleId,
+        fieldName: field.fieldName,
+        selectionMethod: "document",
+        pageNumbers,
+        selectedElementIds: allElementIds,
+        selectionAreas,
+        originalText: text,
+        editedText: null,
+        finalText: text,
+        joinMethod: field.joinMethod,
+        dataType: field.dataType,
+        isConfirmed: false,
+        updatedAt: new Date().toISOString()
+      }
+    }));
+  }, [analysisData, activeRuleId]);
+
+  // 他の項目で使われているElementIdを収集
+  const otherAssignedElementIds = Object.values(assignments)
+    .filter(a => a.fieldId !== activeFieldId)
+    .flatMap(a => a.selectedElementIds);
 
   // Get current page elements for overlay
   const currentPageElements = (() => {
@@ -246,7 +505,19 @@ export default function Home() {
       </header>
 
       {/* 新しく追加したルール接続確認領域 (GAS API) */}
-      <RuleConnectionPanel />
+      <RuleConnectionPanel 
+        onRuleChange={(ruleId) => {
+          if (Object.keys(assignments).length > 0) {
+            if (!confirm("現在の抽出結果があります。ルールを変更すると入力内容が消去されます。変更しますか？")) {
+              return; // 元に戻すのは上位層（RuleConnectionPanel自体がstateを持つので若干不整合になるが、今回は警告を出しつつ初期化する方針）
+            }
+          }
+          setActiveRuleId(ruleId);
+          setAssignments({});
+          setActiveFieldId(null);
+        }}
+        onFieldsFetched={(f) => setFields(f)}
+      />
 
       {fileError && (
         <div className={styles.error}>
@@ -324,6 +595,9 @@ export default function Home() {
               onPageChange={handlePageChange}
               onDocumentLoad={handleDocumentLoad}
               onPdfLoaded={handlePdfLoaded}
+              activeAssignment={activeFieldId ? assignments[activeFieldId] : undefined}
+              otherAssignedElementIds={otherAssignedElementIds}
+              onSelectionRectangle={handleSelectionRectangle}
             />
           </div>
 
@@ -342,6 +616,12 @@ export default function Home() {
                 onClick={() => setActiveTab("document")}
               >
                 文書全文
+              </div>
+              <div 
+                className={`${styles.tab} ${activeTab === "extraction" ? styles.active : ""}`}
+                onClick={() => setActiveTab("extraction")}
+              >
+                抽出項目設定
               </div>
               <div 
                 className={`${styles.tab} ${activeTab === "elements" ? styles.active : ""}`}
@@ -419,6 +699,19 @@ export default function Home() {
                         {analysisData.pages.map(p => p.finalText).join("\n\n---\n\n")}
                       </pre>
                     </div>
+                  )}
+                  {activeTab === "extraction" && (
+                    <ExtractionWorkspace 
+                      fields={fields}
+                      assignments={assignments}
+                      activeFieldId={activeFieldId}
+                      setAssignments={setAssignments}
+                      setActiveFieldId={setActiveFieldId}
+                      onPageSelect={handlePageSelect}
+                      onMultiPageSelect={handleMultiPageSelect}
+                      onDocumentSelect={handleDocumentSelect}
+                      onClearPdfSelection={() => setSelectedElementId(null)}
+                    />
                   )}
                   {activeTab === "elements" && <TextElementsPanel data={analysisData} currentPage={pdfCurrentPage} selectedElementId={selectedElementId} onElementClick={setSelectedElementId} />}
                   {activeTab === "json" && <JsonPanel data={analysisData} currentPage={pdfCurrentPage} editedTexts={editedTexts} />}

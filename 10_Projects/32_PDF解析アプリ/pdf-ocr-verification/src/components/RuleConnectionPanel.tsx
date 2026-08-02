@@ -2,7 +2,12 @@ import React, { useState, useEffect } from "react";
 import { ExtractionRule, ExtractionField, OutputSetting } from "@/lib/gas/types";
 import { getSettings, getRules, getFields, getOutputSettings } from "@/lib/gas/client";
 
-export default function RuleConnectionPanel() {
+interface Props {
+  onRuleChange?: (ruleId: string) => void;
+  onFieldsFetched?: (fields: ExtractionField[]) => void;
+}
+
+export default function RuleConnectionPanel({ onRuleChange, onFieldsFetched }: Props = {}) {
   const [status, setStatus] = useState<"checking" | "connected" | "error">("checking");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -42,6 +47,7 @@ export default function RuleConnectionPanel() {
       }
 
       setActiveRuleId(initialRuleId);
+      if (onRuleChange) onRuleChange(initialRuleId);
       setStatus("connected");
     } catch (error) {
       console.error("初期データの取得に失敗しました:", error);
@@ -69,6 +75,7 @@ export default function RuleConnectionPanel() {
       ]);
       setFields(fetchedFields);
       setOutputSetting(fetchedOutput);
+      if (onFieldsFetched) onFieldsFetched(fetchedFields);
     } catch (error) {
       console.error(`ルール ${ruleId} の詳細取得に失敗しました:`, error);
       // ルール詳細の取得に失敗しても全体をエラー状態にはせず、メッセージを出す程度にするか検討
@@ -84,6 +91,7 @@ export default function RuleConnectionPanel() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -91,6 +99,7 @@ export default function RuleConnectionPanel() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchRuleDetails(activeRuleId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRuleId, status]);
 
   if (status === "error") {
@@ -125,7 +134,10 @@ export default function RuleConnectionPanel() {
             <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "bold", marginBottom: "0.25rem" }}>抽出ルール</label>
             <select 
               value={activeRuleId}
-              onChange={(e) => setActiveRuleId(e.target.value)}
+              onChange={(e) => {
+                setActiveRuleId(e.target.value);
+                if (onRuleChange) onRuleChange(e.target.value);
+              }}
               style={{ width: "100%", padding: "0.5rem", borderRadius: "4px", border: "1px solid #cbd5e1" }}
             >
               {rules.map(rule => (
