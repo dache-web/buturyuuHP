@@ -10,19 +10,61 @@ export interface TextAlternative {
   confidence: number;
 }
 
+export type OcrStatus = 'not_required' | 'pending' | 'ready' | 'processing' | 'success' | 'failed' | 'disabled';
+
+export interface OcrResult {
+  status: OcrStatus;
+  pageNumber: number;
+  text?: string;
+  elements?: TextElement[];
+  confidence?: number;
+  processingTime?: number;
+  errorMessage?: string;
+  provider?: string;
+}
+
+export interface TableColumn {
+  columnId: string;
+  columnName?: string;
+  xStart: number;
+  xEnd: number;
+  displayOrder: number;
+  isExcluded?: boolean;
+}
+
 export interface TableCell {
-  rowIndex: number;
-  colIndex: number;
-  text: string;
+  columnId: string;
+  originalText: string;
+  editedText?: string;
+  finalText: string;
+  sourceElementIds: string[];
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  confidence: number | null;
+}
+
+export interface TableRow {
+  rowId: string;
+  pageNumber: number;
+  rowOrder: number;
+  cells: TableCell[];
+  sourceElementIds: string[];
+  isExcluded?: boolean;
 }
 
 export interface TableAnalysis {
   tableId: string;
   pageNumber: number;
-  rowCount: number;
   columnCount: number;
+  rowCount: number;
+  columns: TableColumn[];
+  rows: TableRow[];
   confidence: number;
-  cells: TableCell[];
+  tableScore?: number;
+  tableReasons?: string[];
+  tableWarnings?: string[];
 }
 
 export interface TextElement {
@@ -40,6 +82,8 @@ export interface TextElement {
   alternatives?: TextAlternative[];
 }
 
+export type PageType = "text" | "table_candidate" | "image" | "mixed" | "blank" | "unknown" | "text_page" | "sparse_text_page" | "image_page" | "unknown_page";
+
 export interface PageAnalysis {
   pageNumber: number;
   width: number;
@@ -52,10 +96,19 @@ export interface PageAnalysis {
     textLength: number;
   };
   
+  hasPdfText?: boolean;
+  hasImageOperators?: boolean;
+  canvasRenderSucceeded?: boolean;
+  classificationReason?: string;
+  
+  pageType: PageType;
+  
+  tableResult?: TableAnalysis;
+  ocrResult?: OcrResult;
+  
   editedText?: string | null;
   finalText: string;
   
-  pageType: "text_page" | "sparse_text_page" | "image_page" | "unknown_page";
   processingTimeMs: number;
   warnings?: string[];
 }

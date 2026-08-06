@@ -351,6 +351,7 @@ export default function PdfViewer({
               <button className={styles.btn} onClick={handleFitWidth}>横幅に合わせる</button>
               <button className={styles.btn} onClick={handleFitPage}>ページ全体を表示</button>
               <button className={styles.btn} onClick={handleResetZoom}>100%表示</button>
+              <button className={styles.btn} onClick={() => void renderPage()}>PDF表示を再読み込み</button>
             </div>
             
             <div>

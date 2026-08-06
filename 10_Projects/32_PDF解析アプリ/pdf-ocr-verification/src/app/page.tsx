@@ -8,6 +8,8 @@ import { getActiveResult } from "@/lib/pdf/activeResult";
 import ExtractedTextPanel from "../components/ExtractedTextPanel";
 import TextElementsPanel from "../components/TextElementsPanel";
 import RuleConnectionPanel from "../components/RuleConnectionPanel";
+import TablePreviewPanel from "../components/TablePreviewPanel";
+import OcrPrepPanel from "../components/OcrPrepPanel";
 import JsonPanel from "../components/JsonPanel";
 import ExtractionWorkspace from "../components/ExtractionWorkspace";
 import { ExtractionField } from "@/lib/gas/types";
@@ -35,7 +37,7 @@ export default function Home() {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   
   // Tab state
-  const [activeTab, setActiveTab] = useState<"text" | "document" | "elements" | "json" | "extraction">("text");
+  const [activeTab, setActiveTab] = useState<"text" | "document" | "elements" | "json" | "extraction" | "table" | "ocr">("text");
   const [showOverlay, setShowOverlay] = useState(true);
 
   // Extraction Workspace state
@@ -103,6 +105,9 @@ export default function Home() {
     // Start text extraction independently from PDF Viewer
     import("@/lib/pdf/extractText")
       .then(({ extractTextFromPdf }) => extractTextFromPdf(file))
+      .then((data) => {
+        return import("@/lib/pdf/pageClassifier").then(({ classifyPages }) => classifyPages(file, data));
+      })
       .then((data) => {
         setAnalysisData(data);
         setIsExtracting(false);
@@ -630,6 +635,18 @@ export default function Home() {
                 抽出項目設定
               </div>
               <div 
+                className={`${styles.tab} ${activeTab === "table" ? styles.active : ""}`}
+                onClick={() => setActiveTab("table")}
+              >
+                表プレビュー
+              </div>
+              <div 
+                className={`${styles.tab} ${activeTab === "ocr" ? styles.active : ""}`}
+                onClick={() => setActiveTab("ocr")}
+              >
+                OCR準備
+              </div>
+              <div 
                 className={`${styles.tab} ${activeTab === "elements" ? styles.active : ""}`}
                 onClick={() => setActiveTab("elements")}
               >
@@ -721,6 +738,8 @@ export default function Home() {
                   )}
                   {activeTab === "elements" && <TextElementsPanel data={analysisData} currentPage={pdfCurrentPage} selectedElementId={selectedElementId} onElementClick={setSelectedElementId} />}
                   {activeTab === "json" && <JsonPanel data={analysisData} currentPage={pdfCurrentPage} editedTexts={editedTexts} />}
+                  {activeTab === "table" && <TablePreviewPanel data={analysisData} currentPage={pdfCurrentPage} />}
+                  {activeTab === "ocr" && <OcrPrepPanel data={analysisData} currentPage={pdfCurrentPage} />}
                 </>
               ) : (
                 <p>解析結果はありません。</p>
