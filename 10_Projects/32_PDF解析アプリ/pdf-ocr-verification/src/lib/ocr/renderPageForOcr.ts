@@ -61,6 +61,23 @@ export interface JpegXObjectInfo {
   contextAfter: string[];
 }
 
+export interface JpegObjectResolutionInfo {
+  index: number;
+  objectId: string;
+  objsHas: boolean;
+  objsGetSuccess: boolean;
+  commonObjsHas: boolean;
+  commonObjsGetSuccess: boolean;
+  constructorName: string;
+  width: number | string;
+  height: number | string;
+  hasBitmap: boolean;
+  hasData: boolean;
+  hasImageData: boolean;
+  hasSrc: boolean;
+  error: string;
+}
+
 export interface CanvasLifecycleInfo {
   displayBeforeW: number;
   displayBeforeH: number;
@@ -113,6 +130,7 @@ export interface PdfInternalDebugInfo {
   ocrViewportWidth?: number;
   ocrViewportHeight?: number;
   jpegXObjectsDetails?: JpegXObjectInfo[];
+  jpegObjectResolutionDetails?: JpegObjectResolutionInfo[];
   canvasLifecycle?: CanvasLifecycleInfo;
 }
 
@@ -372,6 +390,7 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
     
     const imageDetails: ImageXObjectInfo[] = [];
     const jpegDetails: JpegXObjectInfo[] = [];
+    const resolutionDetails: JpegObjectResolutionInfo[] = [];
     const tSummary: TransformSummary = { total: 0, hasIssues: 0, nanCount: 0, infinityCount: 0, outsideCanvasCount: 0, negativeSizeCount: 0, extremeScaleCount: 0 };
     const cvsW = viewport.width;
     const cvsH = viewport.height;
@@ -475,9 +494,32 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
            let status = "Unknown";
            let error = "None";
            
+           let objsHas = false;
+           let objsGetSuccess = false;
+           let commonObjsHas = false;
+           let commonObjsGetSuccess = false;
+           let hasImageData = false;
+           let resolutionError = "None";
+
            try {
              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-             const obj = page.objs?.get(imgName) || (page as any).commonObjs?.get(imgName);
+             const pageAny = page as any;
+             if (pageAny.objs) {
+               objsHas = !!pageAny.objs.has(imgName);
+               if (objsHas) {
+                 const o = pageAny.objs.get(imgName);
+                 if (o) objsGetSuccess = true;
+               }
+             }
+             if (pageAny.commonObjs) {
+               commonObjsHas = !!pageAny.commonObjs.has(imgName);
+               if (commonObjsHas) {
+                 const c = pageAny.commonObjs.get(imgName);
+                 if (c) commonObjsGetSuccess = true;
+               }
+             }
+
+             const obj = (pageAny.objs && pageAny.objs.get(imgName)) || (pageAny.commonObjs && pageAny.commonObjs.get(imgName));
              if (obj) {
                exists = true;
                constructorName = obj.constructor ? obj.constructor.name : typeof obj;
@@ -485,6 +527,7 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
                h = obj.height ?? "Unknown";
                hasData = !!obj.data;
                hasBitmap = !!obj.bitmap;
+               hasImageData = !!obj.imageData;
                hasSrc = !!obj.src;
                status = "Object Acquired";
              } else {
@@ -493,6 +536,7 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
            // eslint-disable-next-line @typescript-eslint/no-explicit-any
            } catch(e: any) {
              error = e.toString();
+             resolutionError = e.toString();
              status = "Error during get()";
            }
            
@@ -511,6 +555,23 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
              error,
              contextBefore: ctxBefore,
              contextAfter: ctxAfter
+           });
+           
+           resolutionDetails.push({
+             index: i,
+             objectId: imgName || "Unknown",
+             objsHas,
+             objsGetSuccess,
+             commonObjsHas,
+             commonObjsGetSuccess,
+             constructorName,
+             width: w,
+             height: h,
+             hasBitmap,
+             hasData,
+             hasImageData,
+             hasSrc,
+             error: resolutionError
            });
         }
         
@@ -605,6 +666,7 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
     
     info.imageXObjectsDetails = imageDetails;
     info.jpegXObjectsDetails = jpegDetails;
+    info.jpegObjectResolutionDetails = resolutionDetails;
     info.transformSummary = tSummary;
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

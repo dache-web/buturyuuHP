@@ -213,6 +213,49 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
             </div>
           )}
 
+          {debugInfo.internalDebugInfo.jpegObjectResolutionDetails && debugInfo.internalDebugInfo.jpegObjectResolutionDetails.length > 0 && (
+            <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0' }}>JPEG Object Resolution</h4>
+              <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f3f4f6' }}>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Object ID</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>objs.has</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>objs.get</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>commonObjs.has</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>commonObjs.get</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Constructor</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Width</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Height</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Bitmap</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Data</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Image Data</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {debugInfo.internalDebugInfo.jpegObjectResolutionDetails.map((res: any, i: number) => (
+                    <tr key={i}>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.objectId}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.objsHas ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.objsGetSuccess ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.commonObjsHas ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.commonObjsGetSuccess ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.constructorName}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.width}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.height}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.hasBitmap ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.hasData ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{res.hasImageData ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px', color: 'red' }}>{res.error !== 'None' ? res.error : ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {debugInfo.internalDebugInfo.canvasLifecycle && (
             <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
               <h4 style={{ margin: '0 0 0.5rem 0' }}>Canvas Lifecycle</h4>
