@@ -256,6 +256,37 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
             </div>
           )}
 
+          {debugInfo.internalDebugInfo.renderTimeline && debugInfo.internalDebugInfo.renderTimeline.length > 0 && (
+            <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0' }}>Render Timeline</h4>
+              <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f3f4f6' }}>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Stage</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Time (ms)</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>objs.has</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>objs.get</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>commonObjs.has</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>commonObjs.get</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {debugInfo.internalDebugInfo.renderTimeline.map((tl: any, i: number) => (
+                    <tr key={i}>
+                      <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>{tl.stage}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{tl.timeMs.toFixed(1)}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{tl.objsHas ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{tl.objsGet ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{tl.commonObjsHas ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{tl.commonObjsGet ? 'YES' : 'NO'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {debugInfo.internalDebugInfo.canvasLifecycle && (
             <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
               <h4 style={{ margin: '0 0 0.5rem 0' }}>Canvas Lifecycle</h4>

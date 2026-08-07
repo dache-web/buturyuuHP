@@ -93,6 +93,15 @@ export interface CanvasLifecycleInfo {
   printAfterH: number;
 }
 
+export interface RenderTimelineEntry {
+  stage: string;
+  timeMs: number;
+  objsHas: boolean;
+  objsGet: boolean;
+  commonObjsHas: boolean;
+  commonObjsGet: boolean;
+}
+
 export interface PdfInternalDebugInfo {
   pageNumber: number;
   operatorListLength: number;
@@ -132,6 +141,7 @@ export interface PdfInternalDebugInfo {
   jpegXObjectsDetails?: JpegXObjectInfo[];
   jpegObjectResolutionDetails?: JpegObjectResolutionInfo[];
   canvasLifecycle?: CanvasLifecycleInfo;
+  renderTimeline?: RenderTimelineEntry[];
 }
 
 export interface OcrDebugInfo {
@@ -222,6 +232,44 @@ export async function renderPageForOcr(
     printAfterW: 0, printAfterH: 0,
   };
 
+  const renderTimeline: RenderTimelineEntry[] = [];
+  let targetObjectId: string | null = null;
+  try {
+    const opList = await page.getOperatorList();
+    // 85 is paintJpegXObject
+    for (let i = 0; i < opList.fnArray.length; i++) {
+      if (opList.fnArray[i] === 85 && opList.argsArray[i] && opList.argsArray[i].length > 0) {
+        targetObjectId = opList.argsArray[i][0];
+        break;
+      }
+    }
+  } catch (e) {}
+
+  const checkObjs = (stage: string, timeMs: number) => {
+    let objsHas = false, objsGet = false;
+    let commonObjsHas = false, commonObjsGet = false;
+    if (targetObjectId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pageAny = page as any;
+      if (pageAny.objs) {
+        objsHas = !!pageAny.objs.has(targetObjectId);
+        if (objsHas && pageAny.objs.get(targetObjectId)) objsGet = true;
+      }
+      if (pageAny.commonObjs) {
+        commonObjsHas = !!pageAny.commonObjs.has(targetObjectId);
+        if (commonObjsHas && pageAny.commonObjs.get(targetObjectId)) commonObjsGet = true;
+      }
+    }
+    renderTimeline.push({
+      stage,
+      timeMs,
+      objsHas,
+      objsGet,
+      commonObjsHas,
+      commonObjsGet
+    });
+  };
+
   for (const method of methods) {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d", { willReadFrequently: true });
@@ -257,7 +305,17 @@ export async function renderPageForOcr(
     }
 
     const renderTask = page.render(renderOptions);
+    
+    if (method.name === "display" && targetObjectId) {
+      checkObjs("Render Started", performance.now());
+      checkObjs("Promise Wait Start", performance.now());
+    }
+
     await renderTask.promise;
+    
+    if (method.name === "display" && targetObjectId) {
+      checkObjs("Promise Resolved", performance.now());
+    }
 
     const { sampledPixelCount, nonWhitePixelCount, ratio } = calculateNonWhitePixelRatio(context, canvas.width, canvas.height);
 
@@ -303,6 +361,20 @@ export async function renderPageForOcr(
     }
   }
 
+  // Record delayed timeline
+  if (targetObjectId && renderTimeline.length > 0) {
+    const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
+    const t0 = performance.now();
+    await wait(100);
+    checkObjs("+100ms", performance.now() - t0);
+    await wait(200);
+    checkObjs("+300ms", performance.now() - t0);
+    await wait(200);
+    checkObjs("+500ms", performance.now() - t0);
+    await wait(500);
+    checkObjs("+1000ms", performance.now() - t0);
+  }
+
   let internalDebugInfo: PdfInternalDebugInfo | undefined;
 
   if (!successAttempt) {
@@ -312,6 +384,7 @@ export async function renderPageForOcr(
 
   if (internalDebugInfo) {
     internalDebugInfo.canvasLifecycle = canvasLifecycle;
+    internalDebugInfo.renderTimeline = renderTimeline;
   }
 
   const debugInfo: OcrDebugInfo | undefined = {
