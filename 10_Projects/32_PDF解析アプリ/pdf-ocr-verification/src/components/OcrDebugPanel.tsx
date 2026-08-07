@@ -42,7 +42,8 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
               </tr>
             </thead>
             <tbody>
-              {debugInfo.attempts.map((att, idx) => (
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {debugInfo.attempts.map((att: any, idx: number) => (
                 <tr key={idx} style={{ backgroundColor: att.nonWhitePixelRatio > 0.001 ? '#dfd' : 'transparent' }}>
                   <td style={{ border: '1px solid #ccc', padding: '2px' }}>{att.methodName}</td>
                   <td style={{ border: '1px solid #ccc', padding: '2px', textAlign: 'right' }}>{att.nonWhitePixelRatio.toFixed(6)}</td>
@@ -97,10 +98,71 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
               <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>setGState Ops</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.setGStateCount}</td></tr>
               <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Dependency Count</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.dependencyCount}</td></tr>
               
-              <tr><td colSpan={2} style={{ backgroundColor: '#e0e7ff', padding: '4px', fontWeight: 'bold' }}>Transform Issues</td></tr>
-              <tr><td colSpan={2} style={{ border: '1px solid #ccc', padding: '4px', color: debugInfo.internalDebugInfo.transformIssues !== "None" ? 'red' : 'inherit' }}>{debugInfo.internalDebugInfo.transformIssues}</td></tr>
+              <tr><td colSpan={2} style={{ backgroundColor: '#e0e7ff', padding: '4px', fontWeight: 'bold' }}>Viewer vs OCR Comparison</td></tr>
+              <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Scale</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>Viewer: {debugInfo.internalDebugInfo.viewerScale} / OCR: {debugInfo.internalDebugInfo.ocrScale}</td></tr>
+              <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Rotation</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>Viewer: {debugInfo.internalDebugInfo.viewerRotation} / OCR: {debugInfo.internalDebugInfo.ocrRotation}</td></tr>
+              
+              {debugInfo.internalDebugInfo.transformSummary && (
+                <>
+                  <tr><td colSpan={2} style={{ backgroundColor: '#e0e7ff', padding: '4px', fontWeight: 'bold' }}>Transform Summary</td></tr>
+                  <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Total Transforms</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.transformSummary.total}</td></tr>
+                  <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Transforms w/ Issues</td><td style={{ border: '1px solid #ccc', padding: '4px', color: debugInfo.internalDebugInfo.transformSummary.hasIssues > 0 ? 'red' : 'inherit' }}>{debugInfo.internalDebugInfo.transformSummary.hasIssues}</td></tr>
+                  <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>NaN Count</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.transformSummary.nanCount}</td></tr>
+                  <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Infinity Count</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.transformSummary.infinityCount}</td></tr>
+                  <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Outside Canvas Count</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.transformSummary.outsideCanvasCount}</td></tr>
+                  <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Negative Size Count</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.transformSummary.negativeSizeCount}</td></tr>
+                  <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Extreme Scale Count</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.transformSummary.extremeScaleCount}</td></tr>
+                </>
+              )}
             </tbody>
           </table>
+
+          {debugInfo.internalDebugInfo.imageXObjectsDetails && debugInfo.internalDebugInfo.imageXObjectsDetails.length > 0 && (
+            <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0' }}>Image XObject Details</h4>
+              <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f3f4f6' }}>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Idx</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Name</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>W x H</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Mask</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Transform [a,b,c,d,e,f]</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Final Box (X, Y, W, H)</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Inside Canvas?</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Clip Rects</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Issues</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {debugInfo.internalDebugInfo.imageXObjectsDetails.map((img: any, i: number) => (
+                    <tr key={i} style={{ backgroundColor: img.insideCanvasStatus === "INSIDE" ? '#ecfdf5' : img.insideCanvasStatus === "INVALID" ? '#fef2f2' : 'transparent' }}>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{img.index}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{img.imageName}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{img.width} x {img.height}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{img.hasImageMask ? 'Image' : ''}{img.hasSMask ? 'S' : ''}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px', fontSize: '0.7rem' }}>
+                        [{img.currentTransform.map((v: any) => typeof v === 'number' ? v.toFixed(2) : v).join(', ')}]
+                      </td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>
+                        {img.finalX.toFixed(1)}, {img.finalY.toFixed(1)}, {img.finalW.toFixed(1)}, {img.finalH.toFixed(1)}
+                      </td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold', color: img.insideCanvasStatus === "OUTSIDE" ? 'red' : 'inherit' }}>
+                        {img.insideCanvasStatus}
+                      </td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px', fontSize: '0.7rem' }}>
+                        {img.clipRects.length > 0 ? img.clipRects.join(' | ') : 'None'}
+                      </td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px', color: 'red' }}>
+                        {img.issues.join(', ')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

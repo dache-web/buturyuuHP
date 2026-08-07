@@ -76,7 +76,7 @@ export default function Home() {
     }
   }, []);
 
-  const validateAndSetFile = (file: File) => {
+  function validateAndSetFile(file: File) {
     setFileError(null);
     setSelectedFile(null);
     setFileInfo(null);
@@ -136,7 +136,7 @@ export default function Home() {
         setExtractError("文字情報の取得に失敗しました。");
         setIsExtracting(false);
       });
-  };
+  }
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -566,6 +566,12 @@ export default function Home() {
         // 同じpdfDocumentProxyRefを渡しているため必ず同じ
         canvasDebugInfo.internalDebugInfo.isSameDocument = true;
         canvasDebugInfo.internalDebugInfo.isSamePage = true;
+        canvasDebugInfo.internalDebugInfo.viewerScale = 1.0; 
+        canvasDebugInfo.internalDebugInfo.ocrScale = 2.0; 
+        canvasDebugInfo.internalDebugInfo.viewerRotation = 0; 
+        canvasDebugInfo.internalDebugInfo.ocrRotation = 0; 
+        canvasDebugInfo.internalDebugInfo.viewerViewportWidth = 0;
+        canvasDebugInfo.internalDebugInfo.viewerViewportHeight = 0;
       }
       
       let ocrResult;

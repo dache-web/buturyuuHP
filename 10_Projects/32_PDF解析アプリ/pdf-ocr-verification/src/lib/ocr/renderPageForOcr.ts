@@ -12,16 +12,36 @@ export interface OcrRenderAttempt {
   dataUrl?: string;
 }
 
-export interface OcrRenderAttempt {
-  methodName: string;
-  renderIntent: string;
-  hasBackground: boolean;
-  canvasWidth: number;
-  canvasHeight: number;
-  nonWhitePixelRatio: number;
-  sampledPixelCount: number;
-  nonWhitePixelCount: number;
-  dataUrl?: string;
+export interface ImageXObjectInfo {
+  index: number;
+  imageName: string;
+  width: number | string;
+  height: number | string;
+  hasImageMask: boolean;
+  hasSMask: boolean;
+  prevTransform: number[];
+  currentTransform: number[];
+  clipRects: string[];
+  finalX: number;
+  finalY: number;
+  finalW: number;
+  finalH: number;
+  viewportX: number;
+  viewportY: number;
+  viewportW: number;
+  viewportH: number;
+  insideCanvasStatus: "INSIDE" | "PARTIAL" | "OUTSIDE" | "INVALID";
+  issues: string[];
+}
+
+export interface TransformSummary {
+  total: number;
+  hasIssues: number;
+  nanCount: number;
+  infinityCount: number;
+  outsideCanvasCount: number;
+  negativeSizeCount: number;
+  extremeScaleCount: number;
 }
 
 export interface PdfInternalDebugInfo {
@@ -50,6 +70,16 @@ export interface PdfInternalDebugInfo {
   isSamePage?: boolean;
   leftViewport?: string;
   ocrViewport?: string;
+  imageXObjectsDetails?: ImageXObjectInfo[];
+  transformSummary?: TransformSummary;
+  viewerScale?: number;
+  ocrScale?: number;
+  viewerRotation?: number;
+  ocrRotation?: number;
+  viewerViewportWidth?: number;
+  viewerViewportHeight?: number;
+  ocrViewportWidth?: number;
+  ocrViewportHeight?: number;
 }
 
 export interface OcrDebugInfo {
@@ -144,6 +174,7 @@ export async function renderPageForOcr(
       context.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const renderOptions: any = {
       canvasContext: context,
       viewport: viewport,
@@ -222,12 +253,14 @@ export async function renderPageForOcr(
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport: pdfjsLib.PageViewport): Promise<PdfInternalDebugInfo> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const info: any = {
     pageNumber: page.pageNumber,
     ocrViewport: `${viewport.width} x ${viewport.height}`,
-    pdfjsVersion: (pdfjsLib as any).version || "unknown",
-    workerSrc: pdfjsLib.GlobalWorkerOptions.workerSrc || "unknown",
+    pdfjsVersion: "unknown", // Removed pdfjsLib usage
+    workerSrc: "unknown", // Removed pdfjsLib usage
   };
 
   try {
@@ -249,8 +282,8 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
 
     let transformIssues = "";
     
-    // ops mapping depends on pdfjs version. 
-    const OPS = (pdfjsLib as any).OPS || (pdfjsLib as any).shared?.OPS || {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const OPS = {
       paintImageXObject: 82,
       paintInlineImageXObject: 83,
       paintJpegXObject: 85,
@@ -258,17 +291,88 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
       paintSolidColorImageMask: 86,
       beginGroup: 92,
       beginXObject: 95,
-      paintFormXObjectBegin: 94, // 以前のバージョン等
-      beginAnnotation: 93, // 適宜
+      paintFormXObjectBegin: 94, 
+      beginAnnotation: 93, 
       beginMarkedContent: 98,
-      setGState: 3
-    }; // fallback if undefined
+      setGState: 3,
+      save: 0,
+      restore: 1,
+      transform: 2,
+      clip: 39,
+      eoClip: 40,
+      rectangle: 13
+    }; 
+    
+    const imageDetails: ImageXObjectInfo[] = [];
+    const tSummary: TransformSummary = { total: 0, hasIssues: 0, nanCount: 0, infinityCount: 0, outsideCanvasCount: 0, negativeSizeCount: 0, extremeScaleCount: 0 };
+    const cvsW = viewport.width;
+    const cvsH = viewport.height;
+    
+    // PDF Transform stack
+    const transformStack: number[][] = [];
+    let currentTransform = viewport.transform ? viewport.transform.slice() : [1, 0, 0, 1, 0, 0];
+    
+    const clipStack: string[][] = [];
+    let currentClips: string[] = [];
+
+    function multiply(m1: number[], m2: number[]) {
+      return [
+        m1[0] * m2[0] + m1[2] * m2[1],
+        m1[1] * m2[0] + m1[3] * m2[1],
+        m1[0] * m2[2] + m1[2] * m2[3],
+        m1[1] * m2[2] + m1[3] * m2[3],
+        m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+        m1[1] * m2[4] + m1[3] * m2[5] + m1[5],
+      ];
+    }
     
     for (let i = 0; i < opList.fnArray.length; i++) {
       const fn = opList.fnArray[i];
       const args = opList.argsArray[i];
 
       if (OPS) {
+        if (fn === OPS.save) {
+          transformStack.push(currentTransform.slice());
+          clipStack.push(currentClips.slice());
+        }
+        if (fn === OPS.restore) {
+          if (transformStack.length > 0) currentTransform = transformStack.pop()!;
+          if (clipStack.length > 0) currentClips = clipStack.pop()!;
+        }
+        if (fn === OPS.rectangle) {
+          if (args && args.length >= 4) {
+            currentClips.push(`rect(${args[0]},${args[1]},${args[2]},${args[3]})`);
+          }
+        }
+        if (fn === OPS.transform) {
+          tSummary.total++;
+          let isNan = false, isInf = false, extreme = false;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if (args && args.some((a: any) => typeof a === 'number' && isNaN(a))) isNan = true;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if (args && args.some((a: any) => typeof a === 'number' && !isFinite(a) && !isNaN(a))) isInf = true;
+          
+          if (args && args.length >= 6) {
+            const scaleX = Math.abs(args[0]);
+            const scaleY = Math.abs(args[3]);
+            if ((scaleX > 10000 || scaleX < 0.0001 || scaleY > 10000 || scaleY < 0.0001) && scaleX !== 0 && scaleY !== 0) {
+              extreme = true;
+            }
+          }
+
+          if (isNan) tSummary.nanCount++;
+          if (isInf) tSummary.infinityCount++;
+          if (extreme) tSummary.extremeScaleCount++;
+          if (isNan || isInf || extreme) {
+            tSummary.hasIssues++;
+            transformIssues += `[${i}] ${isNan?'NaN ':''}${isInf?'Inf ':''}${extreme?'Extreme ':''}`;
+          }
+
+          if (args && args.length === 6 && !isNan && !isInf) {
+            currentTransform = multiply(currentTransform, args);
+          }
+        }
+        
         if (fn === OPS.paintImageXObject) paintImageXObjectCount++;
         if (fn === OPS.paintInlineImageXObject) paintInlineImageXObjectCount++;
         if (fn === OPS.paintJpegXObject) hasPaintJpegXObject = true;
@@ -279,10 +383,81 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
         if (fn === OPS.beginAnnotation) annotationBeginCount++;
         if (fn === OPS.beginMarkedContent) markedContentBeginCount++;
         if (fn === OPS.setGState) setGStateCount++;
-        if (fn === OPS.transform) {
-          if (args && args.some((a: any) => typeof a === 'number' && (isNaN(a) || !isFinite(a) || a === 0))) {
-            transformIssues += `Index ${i}: [${args.join(',')}] `;
-          }
+        
+        if (fn === OPS.paintImageXObject) {
+           const imgName = args && args[0];
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           let w: any = "Unknown", h: any = "Unknown";
+           let hasMask = false, hasSMask = false;
+           try {
+             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             const obj = page.objs?.get(imgName) || (page as any).commonObjs?.get(imgName);
+             if (obj) {
+               w = obj.width ?? "Unknown";
+               h = obj.height ?? "Unknown";
+               hasMask = !!obj.mask;
+               hasSMask = !!obj.smask;
+             }
+           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+           } catch(e) {}
+           
+           const [a, b, c, d, e, f] = currentTransform;
+           
+           const pts = [
+             [e, f],
+             [a + e, b + f],
+             [c + e, d + f],
+             [a + c + e, b + d + f]
+           ];
+           
+           const minX = Math.min(...pts.map(p => p[0]));
+           const maxX = Math.max(...pts.map(p => p[0]));
+           const minY = Math.min(...pts.map(p => p[1]));
+           const maxY = Math.max(...pts.map(p => p[1]));
+           
+           const finalX = minX;
+           const finalY = minY;
+           const finalW = maxX - minX;
+           const finalH = maxY - minY;
+           
+           let inside: ImageXObjectInfo['insideCanvasStatus'] = "INVALID";
+           const issues = [];
+           
+           if (isNaN(finalX) || isNaN(finalY) || isNaN(finalW) || isNaN(finalH) ||
+               !isFinite(finalX) || !isFinite(finalY) || !isFinite(finalW) || !isFinite(finalH)) {
+             inside = "INVALID";
+             issues.push("Invalid Coordinates");
+           } else {
+             if (finalW < -0.1 || finalH < -0.1) {
+               issues.push("Negative Size");
+               tSummary.negativeSizeCount++;
+             }
+             
+             if (finalX >= cvsW || finalY >= cvsH || finalX + finalW <= 0 || finalY + finalH <= 0) {
+               inside = "OUTSIDE";
+               tSummary.outsideCanvasCount++;
+             } else if (finalX >= 0 && finalY >= 0 && finalX + finalW <= cvsW && finalY + finalH <= cvsH) {
+               inside = "INSIDE";
+             } else {
+               inside = "PARTIAL";
+             }
+           }
+           
+           imageDetails.push({
+             index: i,
+             imageName: imgName || "Unknown",
+             width: w,
+             height: h,
+             hasImageMask: hasMask,
+             hasSMask: hasSMask,
+             prevTransform: [],
+             currentTransform: currentTransform.slice(),
+             clipRects: currentClips.slice(),
+             finalX, finalY, finalW, finalH,
+             viewportX: finalX, viewportY: finalY, viewportW: finalW, viewportH: finalH,
+             insideCanvasStatus: inside,
+             issues
+           });
         }
       }
     }
@@ -298,6 +473,10 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
     info.markedContentBeginCount = markedContentBeginCount;
     info.setGStateCount = setGStateCount;
     
+    info.imageXObjectsDetails = imageDetails;
+    info.transformSummary = tSummary;
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     info.dependencyCount = page.commonObjs ? Object.keys((page.commonObjs as any).objs || {}).length : 0; 
 
     const annots = await page.getAnnotations();
@@ -306,6 +485,7 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
     info.transformIssues = transformIssues || "None";
     info.errorsAndWarnings = "None"; 
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     info.errorsAndWarnings = err.toString();
   }

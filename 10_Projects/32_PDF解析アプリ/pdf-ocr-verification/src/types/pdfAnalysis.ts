@@ -21,6 +21,7 @@ export interface OcrResult {
   processingTime?: number;
   errorMessage?: string;
   provider?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   debugInfo?: any;
 }
 
