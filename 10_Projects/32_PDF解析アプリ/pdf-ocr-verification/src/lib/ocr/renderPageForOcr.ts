@@ -102,6 +102,26 @@ export interface RenderTimelineEntry {
   commonObjsGet: boolean;
 }
 
+export interface FreshDocumentComparison {
+  existingCanvasW: number;
+  existingCanvasH: number;
+  existingRatio: number;
+  existingOpCount: number;
+  existingPaintJpegCount: number;
+  
+  freshCanvasW: number;
+  freshCanvasH: number;
+  freshRatio: number;
+  freshOpCount: number;
+  freshPaintJpegCount: number;
+  
+  freshObjsHasBefore: boolean;
+  freshObjsGetBefore: boolean;
+  freshObjsHasAfter: boolean;
+  freshObjsGetAfter: boolean;
+  freshRenderError: string;
+}
+
 export interface PdfInternalDebugInfo {
   pageNumber: number;
   operatorListLength: number;
@@ -142,6 +162,7 @@ export interface PdfInternalDebugInfo {
   jpegObjectResolutionDetails?: JpegObjectResolutionInfo[];
   canvasLifecycle?: CanvasLifecycleInfo;
   renderTimeline?: RenderTimelineEntry[];
+  freshComparison?: FreshDocumentComparison;
 }
 
 export interface OcrDebugInfo {
@@ -214,7 +235,7 @@ export async function renderPageForOcr(
   const methods = [
     { name: "display", intent: "display", background: undefined },
     { name: "display + background:white", intent: "display", background: "rgba(255,255,255,1)" },
-    { name: "print + background:white", intent: "print", background: "rgba(255,255,255,1)" },
+    // { name: "print + background:white", intent: "print", background: "rgba(255,255,255,1)" }, // 除外
   ];
 
   const attempts: OcrRenderAttempt[] = [];
@@ -233,6 +254,117 @@ export async function renderPageForOcr(
   };
 
   const renderTimeline: RenderTimelineEntry[] = [];
+  
+  // ==========================================
+  // Fresh Document Comparison
+  // ==========================================
+  let freshComparison: FreshDocumentComparison | undefined;
+  try {
+    const pdfjsLib = await import("pdfjs-dist");
+    
+    // Existing values (will be overwritten by loop but we take initial estimates)
+    let existingOpCount = 0;
+    let existingPaintJpegCount = 0;
+    try {
+      const opList = await page.getOperatorList();
+      existingOpCount = opList.fnArray.length;
+      for (const fn of opList.fnArray) {
+        if (fn === 85) existingPaintJpegCount++;
+      }
+    } catch(e) {}
+
+    const data = await pdfDocument.getData();
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(data) });
+    const freshDoc = await loadingTask.promise;
+    const freshPage = await freshDoc.getPage(pageNumber);
+    const freshViewport = freshPage.getViewport({ scale });
+    
+    const freshCanvas = document.createElement("canvas");
+    const freshCtx = freshCanvas.getContext("2d", { willReadFrequently: true })!;
+    freshCanvas.width = Math.floor(freshViewport.width);
+    freshCanvas.height = Math.floor(freshViewport.height);
+    
+    const freshOpList = await freshPage.getOperatorList();
+    let freshPaintJpegCount = 0;
+    let targetObjId: string | null = null;
+    for (let i = 0; i < freshOpList.fnArray.length; i++) {
+      if (freshOpList.fnArray[i] === 85) {
+        freshPaintJpegCount++;
+        if (!targetObjId && freshOpList.argsArray[i] && freshOpList.argsArray[i].length > 0) {
+          targetObjId = freshOpList.argsArray[i][0];
+        }
+      }
+    }
+    
+    const getHasGet = () => {
+      let has = false, get = false;
+      if (targetObjId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pageAny = freshPage as any;
+        if (pageAny.objs) {
+          has = !!pageAny.objs.has(targetObjId);
+          if (has && pageAny.objs.get(targetObjId)) get = true;
+        }
+      }
+      return { has, get };
+    };
+
+    let freshRenderError = "None";
+    let objsHasBefore = false, objsGetBefore = false;
+    let objsHasAfter = false, objsGetAfter = false;
+    
+    try {
+      const beforeState = getHasGet();
+      objsHasBefore = beforeState.has;
+      objsGetBefore = beforeState.get;
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const freshRenderOptions: any = {
+        canvasContext: freshCtx,
+        viewport: freshViewport,
+        intent: "display"
+      };
+      const renderTask = freshPage.render(freshRenderOptions);
+      await renderTask.promise;
+      
+      const afterState = getHasGet();
+      objsHasAfter = afterState.has;
+      objsGetAfter = afterState.get;
+    } catch(e: unknown) {
+      freshRenderError = e instanceof Error ? e.toString() : String(e);
+    }
+    
+    const { ratio: freshRatio } = calculateNonWhitePixelRatio(freshCtx, freshCanvas.width, freshCanvas.height);
+    
+    freshComparison = {
+      existingCanvasW: canvasLifecycle.displayBeforeW || Math.floor(viewport.width),
+      existingCanvasH: canvasLifecycle.displayBeforeH || Math.floor(viewport.height),
+      existingRatio: 0, // Will be updated later
+      existingOpCount,
+      existingPaintJpegCount,
+      
+      freshCanvasW: freshCanvas.width,
+      freshCanvasH: freshCanvas.height,
+      freshRatio,
+      freshOpCount: freshOpList.fnArray.length,
+      freshPaintJpegCount,
+      
+      freshObjsHasBefore: objsHasBefore,
+      freshObjsGetBefore: objsGetBefore,
+      freshObjsHasAfter: objsHasAfter,
+      freshObjsGetAfter: objsGetAfter,
+      freshRenderError
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ('destroy' in freshDoc) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (freshDoc as any).destroy();
+    }
+  } catch(e: unknown) {
+    console.error("Fresh Document Comparison Failed:", e);
+  }
+  // ==========================================
+
   let targetObjectId: string | null = null;
   try {
     const opList = await page.getOperatorList();
@@ -374,6 +506,10 @@ export async function renderPageForOcr(
     await wait(500);
     checkObjs("+1000ms", performance.now() - t0);
   }
+  
+  if (freshComparison && attempts.length > 0) {
+    freshComparison.existingRatio = attempts[0].nonWhitePixelRatio;
+  }
 
   let internalDebugInfo: PdfInternalDebugInfo | undefined;
 
@@ -385,6 +521,7 @@ export async function renderPageForOcr(
   if (internalDebugInfo) {
     internalDebugInfo.canvasLifecycle = canvasLifecycle;
     internalDebugInfo.renderTimeline = renderTimeline;
+    internalDebugInfo.freshComparison = freshComparison;
   }
 
   const debugInfo: OcrDebugInfo | undefined = {

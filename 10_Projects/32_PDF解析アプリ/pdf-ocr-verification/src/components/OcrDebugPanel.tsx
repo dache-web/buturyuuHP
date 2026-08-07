@@ -286,6 +286,68 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
               </table>
             </div>
           )}
+          
+          {debugInfo.internalDebugInfo.freshComparison && (
+            <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0' }}>Fresh Document Comparison</h4>
+              <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f3f4f6' }}>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Metric</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Existing (w/ Display)</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Fresh (w/ Display)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>Canvas WxH</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.existingCanvasW} x {debugInfo.internalDebugInfo.freshComparison.existingCanvasH}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.freshCanvasW} x {debugInfo.internalDebugInfo.freshComparison.freshCanvasH}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>nonWhitePixelRatio</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.existingRatio.toFixed(6)}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.freshRatio.toFixed(6)}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>Operator Instructions</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.existingOpCount}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.freshOpCount}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>paintJpegXObject Count</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.existingPaintJpegCount}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.freshPaintJpegCount}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>objs.has before</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>-</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.freshObjsHasBefore ? 'YES' : 'NO'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>objs.has after</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>-</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.freshObjsHasAfter ? 'YES' : 'NO'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>objs.get before</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>-</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.freshObjsGetBefore ? 'YES' : 'NO'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>objs.get after</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>-</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.freshObjsGetAfter ? 'YES' : 'NO'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>Render Error</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>-</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.freshComparison.freshRenderError}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {debugInfo.internalDebugInfo.canvasLifecycle && (
             <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
