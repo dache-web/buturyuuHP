@@ -143,7 +143,7 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
                       <td style={{ border: '1px solid #ccc', padding: '2px' }}>{img.width} x {img.height}</td>
                       <td style={{ border: '1px solid #ccc', padding: '2px' }}>{img.hasImageMask ? 'Image' : ''}{img.hasSMask ? 'S' : ''}</td>
                       <td style={{ border: '1px solid #ccc', padding: '2px', fontSize: '0.7rem' }}>
-                        [{img.currentTransform.map((v: any) => typeof v === 'number' ? v.toFixed(2) : v).join(', ')}]
+                        [{img.currentTransform.map((v: unknown) => typeof v === 'number' ? v.toFixed(2) : v).join(', ')}]
                       </td>
                       <td style={{ border: '1px solid #ccc', padding: '2px' }}>
                         {img.finalX.toFixed(1)}, {img.finalY.toFixed(1)}, {img.finalW.toFixed(1)}, {img.finalH.toFixed(1)}
@@ -159,6 +159,87 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {debugInfo.internalDebugInfo.jpegXObjectsDetails && debugInfo.internalDebugInfo.jpegXObjectsDetails.length > 0 && (
+            <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0' }}>JPEG XObject Summary</h4>
+              <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f3f4f6' }}>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Idx</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Object ID</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Exists</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Constructor</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>W x H</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Data</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Bitmap</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Source</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Status</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {debugInfo.internalDebugInfo.jpegXObjectsDetails.map((jpg: any, i: number) => (
+                    <tr key={i}>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{jpg.index}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{jpg.objectId}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{jpg.exists ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{jpg.constructorName}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{jpg.width} x {jpg.height}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{jpg.hasData ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{jpg.hasBitmap ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{jpg.hasSrc ? 'YES' : 'NO'}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{jpg.status}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px', color: 'red' }}>{jpg.error !== 'None' ? jpg.error : ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <h4 style={{ margin: '1rem 0 0.5rem 0' }}>JPEG Operator Context</h4>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {debugInfo.internalDebugInfo.jpegXObjectsDetails.map((jpg: any, i: number) => (
+                <div key={i} style={{ marginBottom: '1rem', fontSize: '0.8rem', backgroundColor: '#fff', padding: '4px', border: '1px solid #ccc' }}>
+                  <strong>[Index: {jpg.index}] {jpg.objectId}</strong><br/>
+                  <em>Before:</em> {jpg.contextBefore.join(' -> ')}<br/>
+                  <strong style={{ color: 'blue' }}>-&gt; paintJpegXObject {jpg.argsStr}</strong><br/>
+                  <em>After:</em> {jpg.contextAfter.join(' -> ')}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {debugInfo.internalDebugInfo.canvasLifecycle && (
+            <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0' }}>Canvas Lifecycle</h4>
+              <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f3f4f6' }}>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Stage</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Before Render (W x H)</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>After Render (W x H)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>display</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.canvasLifecycle.displayBeforeW} x {debugInfo.internalDebugInfo.canvasLifecycle.displayBeforeH}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.canvasLifecycle.displayAfterW} x {debugInfo.internalDebugInfo.canvasLifecycle.displayAfterH}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>background:white</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.canvasLifecycle.backgroundBeforeW} x {debugInfo.internalDebugInfo.canvasLifecycle.backgroundBeforeH}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.canvasLifecycle.backgroundAfterW} x {debugInfo.internalDebugInfo.canvasLifecycle.backgroundAfterH}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>print</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.canvasLifecycle.printBeforeW} x {debugInfo.internalDebugInfo.canvasLifecycle.printBeforeH}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.canvasLifecycle.printAfterW} x {debugInfo.internalDebugInfo.canvasLifecycle.printAfterH}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>

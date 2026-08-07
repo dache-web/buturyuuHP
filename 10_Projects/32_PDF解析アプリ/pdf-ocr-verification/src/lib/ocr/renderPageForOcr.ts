@@ -44,6 +44,38 @@ export interface TransformSummary {
   extremeScaleCount: number;
 }
 
+export interface JpegXObjectInfo {
+  index: number;
+  argsStr: string;
+  objectId: string;
+  exists: boolean;
+  constructorName: string;
+  width: number | string;
+  height: number | string;
+  hasData: boolean;
+  hasBitmap: boolean;
+  hasSrc: boolean;
+  status: string;
+  error: string;
+  contextBefore: string[];
+  contextAfter: string[];
+}
+
+export interface CanvasLifecycleInfo {
+  displayBeforeW: number;
+  displayBeforeH: number;
+  displayAfterW: number;
+  displayAfterH: number;
+  backgroundBeforeW: number;
+  backgroundBeforeH: number;
+  backgroundAfterW: number;
+  backgroundAfterH: number;
+  printBeforeW: number;
+  printBeforeH: number;
+  printAfterW: number;
+  printAfterH: number;
+}
+
 export interface PdfInternalDebugInfo {
   pageNumber: number;
   operatorListLength: number;
@@ -80,6 +112,8 @@ export interface PdfInternalDebugInfo {
   viewerViewportHeight?: number;
   ocrViewportWidth?: number;
   ocrViewportHeight?: number;
+  jpegXObjectsDetails?: JpegXObjectInfo[];
+  canvasLifecycle?: CanvasLifecycleInfo;
 }
 
 export interface OcrDebugInfo {
@@ -161,6 +195,15 @@ export async function renderPageForOcr(
   let finalWidth = 0;
   let finalHeight = 0;
 
+  const canvasLifecycle: CanvasLifecycleInfo = {
+    displayBeforeW: 0, displayBeforeH: 0,
+    displayAfterW: 0, displayAfterH: 0,
+    backgroundBeforeW: 0, backgroundBeforeH: 0,
+    backgroundAfterW: 0, backgroundAfterH: 0,
+    printBeforeW: 0, printBeforeH: 0,
+    printAfterW: 0, printAfterH: 0,
+  };
+
   for (const method of methods) {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d", { willReadFrequently: true });
@@ -168,6 +211,17 @@ export async function renderPageForOcr(
 
     canvas.width = Math.floor(viewport.width);
     canvas.height = Math.floor(viewport.height);
+
+    if (method.name === "display") {
+      canvasLifecycle.displayBeforeW = canvas.width;
+      canvasLifecycle.displayBeforeH = canvas.height;
+    } else if (method.name === "display + background:white") {
+      canvasLifecycle.backgroundBeforeW = canvas.width;
+      canvasLifecycle.backgroundBeforeH = canvas.height;
+    } else if (method.name === "print + background:white") {
+      canvasLifecycle.printBeforeW = canvas.width;
+      canvasLifecycle.printBeforeH = canvas.height;
+    }
 
     if (method.background) {
       context.fillStyle = method.background;
@@ -190,6 +244,17 @@ export async function renderPageForOcr(
     const { sampledPixelCount, nonWhitePixelCount, ratio } = calculateNonWhitePixelRatio(context, canvas.width, canvas.height);
 
     const dataUrl = canvas.toDataURL("image/png");
+
+    if (method.name === "display") {
+      canvasLifecycle.displayAfterW = canvas.width;
+      canvasLifecycle.displayAfterH = canvas.height;
+    } else if (method.name === "display + background:white") {
+      canvasLifecycle.backgroundAfterW = canvas.width;
+      canvasLifecycle.backgroundAfterH = canvas.height;
+    } else if (method.name === "print + background:white") {
+      canvasLifecycle.printAfterW = canvas.width;
+      canvasLifecycle.printAfterH = canvas.height;
+    }
 
     const attemptInfo: OcrRenderAttempt = {
       methodName: method.name,
@@ -214,7 +279,7 @@ export async function renderPageForOcr(
       canvas.height = 0;
       break;
     } else {
-      // 失敗した場合はクリーンアップして次のループへ
+      // Memory cleanup for failed attempts
       canvas.width = 0;
       canvas.height = 0;
     }
@@ -225,6 +290,10 @@ export async function renderPageForOcr(
   if (!successAttempt) {
     // 全ての描画方式で白紙だった場合、内部構造を調査
     internalDebugInfo = await inspectPdfInternalStructure(page, viewport);
+  }
+
+  if (internalDebugInfo) {
+    internalDebugInfo.canvasLifecycle = canvasLifecycle;
   }
 
   const debugInfo: OcrDebugInfo | undefined = {
@@ -253,7 +322,6 @@ export async function renderPageForOcr(
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport: pdfjsLib.PageViewport): Promise<PdfInternalDebugInfo> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const info: any = {
@@ -282,7 +350,6 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
 
     let transformIssues = "";
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const OPS = {
       paintImageXObject: 82,
       paintInlineImageXObject: 83,
@@ -304,6 +371,7 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
     }; 
     
     const imageDetails: ImageXObjectInfo[] = [];
+    const jpegDetails: JpegXObjectInfo[] = [];
     const tSummary: TransformSummary = { total: 0, hasIssues: 0, nanCount: 0, infinityCount: 0, outsideCanvasCount: 0, negativeSizeCount: 0, extremeScaleCount: 0 };
     const cvsW = viewport.width;
     const cvsH = viewport.height;
@@ -383,6 +451,68 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
         if (fn === OPS.beginAnnotation) annotationBeginCount++;
         if (fn === OPS.beginMarkedContent) markedContentBeginCount++;
         if (fn === OPS.setGState) setGStateCount++;
+        
+        if (fn === OPS.paintJpegXObject) {
+           const imgName = args && args[0];
+           const getOpName = (opFn: number) => {
+             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             return Object.keys(OPS).find(key => (OPS as any)[key] === opFn) || `Op(${opFn})`;
+           };
+           
+           const ctxBefore = [];
+           const ctxAfter = [];
+           for (let j = Math.max(0, i - 5); j < i; j++) {
+             ctxBefore.push(`[${j}] ${getOpName(opList.fnArray[j])}`);
+           }
+           for (let j = i + 1; j <= Math.min(opList.fnArray.length - 1, i + 5); j++) {
+             ctxAfter.push(`[${j}] ${getOpName(opList.fnArray[j])}`);
+           }
+           
+           let exists = false;
+           let constructorName = "Unknown";
+           let w: string | number = "Unknown", h: string | number = "Unknown";
+           let hasData = false, hasBitmap = false, hasSrc = false;
+           let status = "Unknown";
+           let error = "None";
+           
+           try {
+             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             const obj = page.objs?.get(imgName) || (page as any).commonObjs?.get(imgName);
+             if (obj) {
+               exists = true;
+               constructorName = obj.constructor ? obj.constructor.name : typeof obj;
+               w = obj.width ?? "Unknown";
+               h = obj.height ?? "Unknown";
+               hasData = !!obj.data;
+               hasBitmap = !!obj.bitmap;
+               hasSrc = !!obj.src;
+               status = "Object Acquired";
+             } else {
+               status = "Object Not Found in objs/commonObjs";
+             }
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           } catch(e: any) {
+             error = e.toString();
+             status = "Error during get()";
+           }
+           
+           jpegDetails.push({
+             index: i,
+             argsStr: args ? JSON.stringify(args) : "[]",
+             objectId: imgName || "Unknown",
+             exists,
+             constructorName,
+             width: w,
+             height: h,
+             hasData,
+             hasBitmap,
+             hasSrc,
+             status,
+             error,
+             contextBefore: ctxBefore,
+             contextAfter: ctxAfter
+           });
+        }
         
         if (fn === OPS.paintImageXObject) {
            const imgName = args && args[0];
@@ -474,6 +604,7 @@ async function inspectPdfInternalStructure(page: pdfjsLib.PDFPageProxy, viewport
     info.setGStateCount = setGStateCount;
     
     info.imageXObjectsDetails = imageDetails;
+    info.jpegXObjectsDetails = jpegDetails;
     info.transformSummary = tSummary;
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
