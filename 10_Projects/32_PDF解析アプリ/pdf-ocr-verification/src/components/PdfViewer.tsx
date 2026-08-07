@@ -277,6 +277,9 @@ export default function PdfViewer({
   const handleElementClick = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
 
+    // Disable clicking for OCR elements for now
+    if (id.startsWith('ocr_')) return;
+
     if (onElementsSelected) {
       onElementsSelected([id]);
     }

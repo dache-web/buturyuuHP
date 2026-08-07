@@ -21,6 +21,7 @@ export interface OcrResult {
   processingTime?: number;
   errorMessage?: string;
   provider?: string;
+  debugInfo?: any;
 }
 
 export interface TableColumn {

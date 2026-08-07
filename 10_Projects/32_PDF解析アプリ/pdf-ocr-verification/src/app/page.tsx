@@ -59,6 +59,22 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tabContentScrollRef = useRef<HTMLDivElement>(null);
 
+  // DEV: Auto load PDF for testing
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const autoLoad = urlParams.get('dev_auto_load');
+      if (autoLoad) {
+        fetch(`/test_pdfs/${autoLoad}`)
+          .then(res => res.blob())
+          .then(blob => {
+            const file = new File([blob], autoLoad, { type: "application/pdf" });
+            validateAndSetFile(file);
+          })
+          .catch(err => console.error("Auto load failed", err));
+      }
+    }
+  }, []);
 
   const validateAndSetFile = (file: File) => {
     setFileError(null);
@@ -496,6 +512,112 @@ export default function Home() {
     }));
   }, [analysisData, activeRuleId]);
 
+  const handleToggleOcrTarget = useCallback((pageNumber: number, target: boolean) => {
+    setAnalysisData(prev => {
+      if (!prev) return prev;
+      const newPages = [...prev.pages];
+      const pageIndex = newPages.findIndex(p => p.pageNumber === pageNumber);
+      if (pageIndex === -1) return prev;
+      
+      const page = { ...newPages[pageIndex] };
+      page.ocrResult = {
+        ...(page.ocrResult || { status: "not_required" as const, pageNumber }),
+        status: target ? ("ready" as const) : ("not_required" as const)
+      };
+      // If toggled off, we can clear text or just leave it, but status tells it's not required.
+      if (!target) {
+        page.ocrResult.text = "";
+        page.ocrResult.errorMessage = undefined;
+      }
+      
+      newPages[pageIndex] = page;
+      return { ...prev, pages: newPages };
+    });
+  }, []);
+
+  const handleRunOcr = useCallback(async (pageNumber: number) => {
+    if (!pdfDocumentProxyRef.current || !analysisData) return;
+    
+    // Set processing status
+    setAnalysisData(prev => {
+      if (!prev) return prev;
+      const newPages = [...prev.pages];
+      const pageIndex = newPages.findIndex(p => p.pageNumber === pageNumber);
+      if (pageIndex === -1) return prev;
+      newPages[pageIndex] = {
+        ...newPages[pageIndex],
+        ocrResult: { ...newPages[pageIndex].ocrResult, status: "processing" as const, pageNumber }
+      };
+      return { ...prev, pages: newPages };
+    });
+
+    try {
+      if (typeof window === "undefined") {
+        throw new Error("OCRはブラウザ上でのみ実行できます。");
+      }
+      
+      // Dynamic import to prevent SSR errors
+      const { renderPageForOcr } = await import('@/lib/ocr/renderPageForOcr');
+      const { runOcr } = await import('@/lib/ocr/ocrProvider');
+      
+      const { dataUrl: imageUrl, width: imageWidth, height: imageHeight, debugInfo: canvasDebugInfo, failedAtRender } = await renderPageForOcr(pdfDocumentProxyRef.current, pageNumber);
+      
+      if (canvasDebugInfo && canvasDebugInfo.internalDebugInfo) {
+        // 同じpdfDocumentProxyRefを渡しているため必ず同じ
+        canvasDebugInfo.internalDebugInfo.isSameDocument = true;
+        canvasDebugInfo.internalDebugInfo.isSamePage = true;
+      }
+      
+      let ocrResult;
+      
+      if (failedAtRender) {
+        ocrResult = {
+          status: "failed" as const,
+          pageNumber,
+          text: "",
+          confidence: 0,
+          errorMessage: "PDF.js描画失敗: 内部構造の調査結果を確認してください",
+          debugInfo: canvasDebugInfo
+        };
+      } else {
+        ocrResult = await runOcr({ imageUrl, imageWidth, imageHeight, pageNumber });
+        if (canvasDebugInfo) {
+          ocrResult.debugInfo = {
+            ...canvasDebugInfo,
+            ...(ocrResult.debugInfo || {})
+          };
+        }
+      }
+
+      setAnalysisData(prev => {
+        if (!prev) return prev;
+        const newPages = [...prev.pages];
+        const pageIndex = newPages.findIndex(p => p.pageNumber === pageNumber);
+        if (pageIndex === -1) return prev;
+        newPages[pageIndex] = { ...newPages[pageIndex], ocrResult };
+        return { ...prev, pages: newPages };
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "OCRの準備または実行に失敗しました";
+      console.error(error);
+      setAnalysisData(prev => {
+        if (!prev) return prev;
+        const newPages = [...prev.pages];
+        const pageIndex = newPages.findIndex(p => p.pageNumber === pageNumber);
+        if (pageIndex === -1) return prev;
+        newPages[pageIndex] = {
+          ...newPages[pageIndex],
+          ocrResult: { 
+            status: "failed" as const, 
+            pageNumber, 
+            errorMessage 
+          }
+        };
+        return { ...prev, pages: newPages };
+      });
+    }
+  }, [analysisData]);
+
   // 他の項目で使われているElementIdを収集
   const otherAssignedElementIds = Object.values(assignments)
     .filter(a => a.fieldId !== activeFieldId)
@@ -505,7 +627,9 @@ export default function Home() {
   const currentPageElements = (() => {
     const page = analysisData?.pages.find(p => p.pageNumber === pdfCurrentPage);
     if (!page) return [];
-    return getActiveResult(page, editedTexts[pdfCurrentPage]).elements;
+    const baseElements = getActiveResult(page, editedTexts[pdfCurrentPage]).elements;
+    const ocrElements = page.ocrResult?.elements || [];
+    return [...baseElements, ...ocrElements];
   })();
 
   return (
@@ -739,7 +863,7 @@ export default function Home() {
                   {activeTab === "elements" && <TextElementsPanel data={analysisData} currentPage={pdfCurrentPage} selectedElementId={selectedElementId} onElementClick={setSelectedElementId} />}
                   {activeTab === "json" && <JsonPanel data={analysisData} currentPage={pdfCurrentPage} editedTexts={editedTexts} />}
                   {activeTab === "table" && <TablePreviewPanel data={analysisData} currentPage={pdfCurrentPage} />}
-                  {activeTab === "ocr" && <OcrPrepPanel data={analysisData} currentPage={pdfCurrentPage} />}
+                  {activeTab === "ocr" && <OcrPrepPanel data={analysisData} currentPage={pdfCurrentPage} onRunOcr={handleRunOcr} onToggleOcrTarget={handleToggleOcrTarget} />}
                 </>
               ) : (
                 <p>解析結果はありません。</p>
