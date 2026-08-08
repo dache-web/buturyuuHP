@@ -1,6 +1,7 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import { PdfAnalysisData, PageAnalysis, TextElement, DocumentAnalysis } from "@/types/pdfAnalysis";
 import { calculateCoordinates } from "./coordinates";
+import { getPdfjsOptions, getWorkerSrc } from "./pdfjsConfig";
 
 const MIN_TEXT_LENGTH_PER_PAGE = 50;
 const MIN_TEXT_ITEMS_PER_PAGE = 10;
@@ -16,12 +17,15 @@ export async function extractTextFromPdf(
   }
   const pdfjsLib = await import("pdfjs-dist");
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.debug.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerSrc(pdfjsLib.version, true);
   }
   
   const arrayBuffer = await file.arrayBuffer();
   const data = new Uint8Array(arrayBuffer);
-  const loadingTask = pdfjsLib.getDocument({ data });
+  const loadingTask = pdfjsLib.getDocument({
+    data,
+    ...getPdfjsOptions(pdfjsLib.version),
+  });
   const pdfDocument = await loadingTask.promise;
   
   try {

@@ -34562,7 +34562,7 @@ class PartialEvaluator {
       }
       return this._sendImgData(objId, imgData, cacheGlobally);
     }).catch(reason => {
-      this.handler.send("obj", ["__DEBUG_ERROR__", this.pageIndex, "DebugError", { objId: objId, name: reason && reason.name, message: reason && reason.message, stack: reason && reason.stack }]);
+      this.handler.send("obj", ["__DEBUG_ERROR__", this.pageIndex, "Image", { objId: objId, name: reason && reason.name, message: reason && reason.message, stack: reason && reason.stack }]);
       warn(`Unable to decode image "${objId}": "${reason}".`);
       if (imageRef) {
         this.globalImageCache.addDecodeFailed(imageRef);

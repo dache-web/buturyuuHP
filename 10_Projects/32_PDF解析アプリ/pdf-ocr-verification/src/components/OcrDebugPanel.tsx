@@ -75,6 +75,7 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
             <tbody>
               <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Page / Viewport</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>Page {debugInfo.internalDebugInfo.pageNumber} / {debugInfo.internalDebugInfo.ocrViewport}</td></tr>
               <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>PDF.js / Worker</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.pdfjsVersion} / {debugInfo.internalDebugInfo.workerSrc}</td></tr>
+              <tr><td style={{ border: '1px solid #ccc', padding: '4px', fontWeight: 'bold' }}>Debug Worker Active</td><td style={{ border: '1px solid #ccc', padding: '4px', color: debugInfo.internalDebugInfo.workerSrc?.includes('debug') ? 'green' : 'red', fontWeight: 'bold' }}>{debugInfo.internalDebugInfo.workerSrc?.includes('debug') ? 'YES' : 'NO'}</td></tr>
               <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Document一致</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.isSameDocument ? 'YES' : 'NO'}</td></tr>
               <tr><td style={{ border: '1px solid #ccc', padding: '4px' }}>Page一致</td><td style={{ border: '1px solid #ccc', padding: '4px' }}>{debugInfo.internalDebugInfo.isSamePage ? 'YES' : 'NO'}</td></tr>
               

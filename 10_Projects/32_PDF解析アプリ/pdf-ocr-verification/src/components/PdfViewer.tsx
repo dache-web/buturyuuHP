@@ -5,6 +5,7 @@ import type * as pdfjsLib from "pdfjs-dist";
 import styles from "../app/page.module.css";
 import { TextElement } from "@/types/pdfAnalysis";
 import { ExtractionAssignment, SelectionArea } from "@/types/extractionAssignment";
+import { getPdfjsOptions, getWorkerSrc } from '@/lib/pdf/pdfjsConfig';
 
 interface PdfViewerProps {
   file: File;
@@ -94,10 +95,13 @@ export default function PdfViewer({
         
         const pdfjsLib = await import("pdfjs-dist");
         if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.debug.mjs';
+          pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerSrc(pdfjsLib.version, true);
         }
         
-        const loadingTask = pdfjsLib.getDocument({ data });
+        const loadingTask = pdfjsLib.getDocument({
+          data,
+          ...getPdfjsOptions(pdfjsLib.version),
+        });
         loadingTaskRef.current = loadingTask;
         
         const pdf = await loadingTask.promise;

@@ -1,5 +1,6 @@
 import { PdfAnalysisData, PageAnalysis, PageType } from "@/types/pdfAnalysis";
 import { analyzeTable } from "./tableAnalysis";
+import { getPdfjsOptions, getWorkerSrc } from "./pdfjsConfig";
 
 export async function classifyPages(
   file: File,
@@ -11,13 +12,16 @@ export async function classifyPages(
   
   const pdfjsLib = await import("pdfjs-dist");
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.debug.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerSrc(pdfjsLib.version, true);
   }
 
   const arrayBuffer = await file.arrayBuffer();
   const data = new Uint8Array(arrayBuffer);
   
-  const loadingTask = pdfjsLib.getDocument({ data });
+  const loadingTask = pdfjsLib.getDocument({
+    data,
+    ...getPdfjsOptions(pdfjsLib.version),
+  });
   const pdfDocument = await loadingTask.promise;
   
   try {
