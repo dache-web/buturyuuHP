@@ -95,7 +95,7 @@ export default function PdfViewer({
         
         const pdfjsLib = await import("pdfjs-dist");
         if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerSrc(pdfjsLib.version, true);
+          pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerSrc(pdfjsLib.version);
         }
         
         const loadingTask = pdfjsLib.getDocument({

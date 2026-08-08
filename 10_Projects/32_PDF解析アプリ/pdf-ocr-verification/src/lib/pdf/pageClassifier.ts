@@ -12,7 +12,7 @@ export async function classifyPages(
   
   const pdfjsLib = await import("pdfjs-dist");
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerSrc(pdfjsLib.version, true);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerSrc(pdfjsLib.version);
   }
 
   const arrayBuffer = await file.arrayBuffer();
