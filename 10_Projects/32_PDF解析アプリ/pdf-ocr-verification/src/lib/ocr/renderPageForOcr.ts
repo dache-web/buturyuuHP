@@ -127,6 +127,18 @@ export interface JpegDecodeError {
   errorMessage: string;
 }
 
+export interface ResolveEvent {
+  objectId: string;
+  valueType: string;
+  valueIsNull: boolean;
+}
+
+export interface WorkerCommDebug {
+  resolveCalledCount: number;
+  resolveEvents: ResolveEvent[];
+  rejectExceptions: string[];
+}
+
 export interface PdfInternalDebugInfo {
   pageNumber: number;
   operatorListLength: number;
@@ -169,6 +181,7 @@ export interface PdfInternalDebugInfo {
   renderTimeline?: RenderTimelineEntry[];
   freshComparison?: FreshDocumentComparison;
   jpegDecodeErrors?: JpegDecodeError[];
+  workerCommDebug?: WorkerCommDebug;
 }
 
 export interface OcrDebugInfo {
@@ -262,6 +275,12 @@ export async function renderPageForOcr(
   const renderTimeline: RenderTimelineEntry[] = [];
   const jpegDecodeErrors: JpegDecodeError[] = [];
   
+  const workerCommDebug: WorkerCommDebug = {
+    resolveCalledCount: 0,
+    resolveEvents: [],
+    rejectExceptions: []
+  };
+  
   // ==========================================
   // Fresh Document Comparison
   // ==========================================
@@ -310,7 +329,11 @@ export async function renderPageForOcr(
         const pageAny = freshPage as any;
         if (pageAny.objs) {
           has = !!pageAny.objs.has(targetObjId);
-          if (has && pageAny.objs.get(targetObjId)) get = true;
+          if (has) {
+            try {
+              if (pageAny.objs.get(targetObjId)) get = true;
+            } catch (_) {}
+          }
         }
       }
       return { has, get };
@@ -321,8 +344,20 @@ export async function renderPageForOcr(
     let objsHasAfter = false, objsGetAfter = false;
     
     let originalWarn: typeof console.warn | undefined;
+    let originalError: typeof console.error | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let originalResolve: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pageAny = freshPage as any;
+
     try {
       originalWarn = console.warn;
+      originalError = console.error;
+      
+      console.error = (...args) => {
+        workerCommDebug.rejectExceptions.push(args.join(' '));
+        if (originalError) originalError.apply(console, args);
+      };
       console.warn = (...args) => {
         if (args.length > 0 && typeof args[0] === 'string' && args[0].includes('Unable to decode image')) {
           const msg = args.join(' ');
@@ -344,6 +379,20 @@ export async function renderPageForOcr(
         }
       };
 
+      if (pageAny.objs && typeof pageAny.objs.resolve === 'function') {
+        originalResolve = pageAny.objs.resolve.bind(pageAny.objs);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pageAny.objs.resolve = (objId: string, data: any) => {
+          workerCommDebug.resolveCalledCount++;
+          workerCommDebug.resolveEvents.push({
+            objectId: objId,
+            valueType: typeof data,
+            valueIsNull: data === null
+          });
+          return originalResolve(objId, data);
+        };
+      }
+
       const beforeState = getHasGet();
       objsHasBefore = beforeState.has;
       objsGetBefore = beforeState.get;
@@ -362,9 +411,16 @@ export async function renderPageForOcr(
       objsGetAfter = afterState.get;
     } catch(e: unknown) {
       freshRenderError = e instanceof Error ? e.toString() : String(e);
+      workerCommDebug.rejectExceptions.push(freshRenderError);
     } finally {
       if (originalWarn) {
         console.warn = originalWarn;
+      }
+      if (originalError) {
+        console.error = originalError;
+      }
+      if (originalResolve && pageAny.objs) {
+        pageAny.objs.resolve = originalResolve;
       }
     }
     
@@ -389,6 +445,7 @@ export async function renderPageForOcr(
       freshObjsGetAfter: objsGetAfter,
       freshRenderError
     };
+    
     if ('destroy' in freshDoc) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (freshDoc as any).destroy();
@@ -559,6 +616,8 @@ export async function renderPageForOcr(
     if (jpegDecodeErrors.length > 0) {
       internalDebugInfo.jpegDecodeErrors = jpegDecodeErrors;
     }
+    
+    internalDebugInfo.workerCommDebug = workerCommDebug;
   }
 
   const debugInfo: OcrDebugInfo | undefined = {

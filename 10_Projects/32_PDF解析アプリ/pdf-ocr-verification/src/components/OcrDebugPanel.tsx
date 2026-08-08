@@ -381,6 +381,57 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
               </div>
             </div>
           )}
+          
+          {debugInfo.internalDebugInfo.workerCommDebug && (
+            <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', color: 'blue' }}>Worker Communication (objs.resolve Intercept)</h4>
+              <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', whiteSpace: 'nowrap', marginBottom: '0.5rem' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold', width: '200px' }}>Total resolves called</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px' }}>{debugInfo.internalDebugInfo.workerCommDebug.resolveCalledCount}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: 'bold' }}>Reject Exceptions (console.error)</td>
+                    <td style={{ border: '1px solid #ccc', padding: '2px', color: 'red', whiteSpace: 'normal' }}>
+                      {debugInfo.internalDebugInfo.workerCommDebug.rejectExceptions.length > 0
+                        ? debugInfo.internalDebugInfo.workerCommDebug.rejectExceptions.map((err: string, i: number) => <div key={i}>{err}</div>)
+                        : 'None'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {debugInfo.internalDebugInfo.workerCommDebug.resolveEvents.length > 0 && (
+                <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#eef2ff' }}>
+                      <th style={{ border: '1px solid #ccc', padding: '2px' }}>#</th>
+                      <th style={{ border: '1px solid #ccc', padding: '2px' }}>Object ID</th>
+                      <th style={{ border: '1px solid #ccc', padding: '2px' }}>Data Type</th>
+                      <th style={{ border: '1px solid #ccc', padding: '2px' }}>Is Null?</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {debugInfo.internalDebugInfo.workerCommDebug.resolveEvents.slice(0, 10).map((evt: any, i: number) => (
+                      <tr key={i}>
+                        <td style={{ border: '1px solid #ccc', padding: '2px', textAlign: 'center' }}>{i + 1}</td>
+                        <td style={{ border: '1px solid #ccc', padding: '2px' }}>{evt.objectId}</td>
+                        <td style={{ border: '1px solid #ccc', padding: '2px' }}>{evt.valueType}</td>
+                        <td style={{ border: '1px solid #ccc', padding: '2px', fontWeight: evt.valueIsNull ? 'bold' : 'normal', color: evt.valueIsNull ? 'red' : 'inherit' }}>
+                          {evt.valueIsNull ? 'YES' : 'NO'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {debugInfo.internalDebugInfo.workerCommDebug.resolveEvents.length > 10 && (
+                <div style={{ fontSize: '0.75rem', color: '#666' }}>... and {debugInfo.internalDebugInfo.workerCommDebug.resolveEvents.length - 10} more events (showing top 10)</div>
+              )}
+            </div>
+          )}
 
           {debugInfo.internalDebugInfo.canvasLifecycle && (
             <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
