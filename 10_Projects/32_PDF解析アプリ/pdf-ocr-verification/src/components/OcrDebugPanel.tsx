@@ -348,6 +348,39 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
               </table>
             </div>
           )}
+          
+          {debugInfo.internalDebugInfo.jpegDecodeErrors && debugInfo.internalDebugInfo.jpegDecodeErrors.length > 0 && (
+            <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0' }}>JPEG Decode Errors (Worker)</h4>
+              <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f3f4f6' }}>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>#</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Object ID</th>
+                    <th style={{ border: '1px solid #ccc', padding: '2px' }}>Error Message</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {debugInfo.internalDebugInfo.jpegDecodeErrors.map((err: any, i: number) => (
+                    <tr key={i}>
+                      <td style={{ border: '1px solid #ccc', padding: '2px', textAlign: 'center' }}>{i + 1}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px' }}>{err.objectId}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '2px', color: 'red', whiteSpace: 'normal' }}>{err.errorMessage}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>
+                <p><strong>総エラー数:</strong> {debugInfo.internalDebugInfo.jpegDecodeErrors.length}</p>
+                {debugInfo.internalDebugInfo.jpegDecodeErrors.length === debugInfo.internalDebugInfo.freshComparison?.freshPaintJpegCount ? (
+                  <p style={{ color: 'red', fontWeight: 'bold' }}>判定: A（すべてのJPEG画像でデコード失敗が確認されました）</p>
+                ) : (
+                  <p>判定: 一部の画像のみ失敗、または別の問題</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {debugInfo.internalDebugInfo.canvasLifecycle && (
             <div style={{ marginTop: '1rem', overflowX: 'auto' }}>

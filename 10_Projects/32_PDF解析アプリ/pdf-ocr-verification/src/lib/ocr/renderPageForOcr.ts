@@ -122,6 +122,11 @@ export interface FreshDocumentComparison {
   freshRenderError: string;
 }
 
+export interface JpegDecodeError {
+  objectId: string;
+  errorMessage: string;
+}
+
 export interface PdfInternalDebugInfo {
   pageNumber: number;
   operatorListLength: number;
@@ -163,6 +168,7 @@ export interface PdfInternalDebugInfo {
   canvasLifecycle?: CanvasLifecycleInfo;
   renderTimeline?: RenderTimelineEntry[];
   freshComparison?: FreshDocumentComparison;
+  jpegDecodeErrors?: JpegDecodeError[];
 }
 
 export interface OcrDebugInfo {
@@ -254,6 +260,7 @@ export async function renderPageForOcr(
   };
 
   const renderTimeline: RenderTimelineEntry[] = [];
+  const jpegDecodeErrors: JpegDecodeError[] = [];
   
   // ==========================================
   // Fresh Document Comparison
@@ -271,7 +278,7 @@ export async function renderPageForOcr(
       for (const fn of opList.fnArray) {
         if (fn === 85) existingPaintJpegCount++;
       }
-    } catch(e) {}
+    } catch(_) {}
 
     const data = await pdfDocument.getData();
     const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(data) });
@@ -313,7 +320,30 @@ export async function renderPageForOcr(
     let objsHasBefore = false, objsGetBefore = false;
     let objsHasAfter = false, objsGetAfter = false;
     
+    let originalWarn: typeof console.warn | undefined;
     try {
+      originalWarn = console.warn;
+      console.warn = (...args) => {
+        if (args.length > 0 && typeof args[0] === 'string' && args[0].includes('Unable to decode image')) {
+          const msg = args.join(' ');
+          const match = msg.match(/Unable to decode image "([^"]+)": "(.*)"/);
+          if (match) {
+            jpegDecodeErrors.push({
+              objectId: match[1],
+              errorMessage: match[2]
+            });
+          } else {
+            jpegDecodeErrors.push({
+              objectId: 'Unknown',
+              errorMessage: msg
+            });
+          }
+        }
+        if (originalWarn) {
+          originalWarn.apply(console, args);
+        }
+      };
+
       const beforeState = getHasGet();
       objsHasBefore = beforeState.has;
       objsGetBefore = beforeState.get;
@@ -332,6 +362,10 @@ export async function renderPageForOcr(
       objsGetAfter = afterState.get;
     } catch(e: unknown) {
       freshRenderError = e instanceof Error ? e.toString() : String(e);
+    } finally {
+      if (originalWarn) {
+        console.warn = originalWarn;
+      }
     }
     
     const { ratio: freshRatio } = calculateNonWhitePixelRatio(freshCtx, freshCanvas.width, freshCanvas.height);
@@ -355,7 +389,6 @@ export async function renderPageForOcr(
       freshObjsGetAfter: objsGetAfter,
       freshRenderError
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ('destroy' in freshDoc) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (freshDoc as any).destroy();
@@ -375,7 +408,7 @@ export async function renderPageForOcr(
         break;
       }
     }
-  } catch (e) {}
+  } catch (_) {}
 
   const checkObjs = (stage: string, timeMs: number) => {
     let objsHas = false, objsGet = false;
@@ -522,6 +555,10 @@ export async function renderPageForOcr(
     internalDebugInfo.canvasLifecycle = canvasLifecycle;
     internalDebugInfo.renderTimeline = renderTimeline;
     internalDebugInfo.freshComparison = freshComparison;
+    
+    if (jpegDecodeErrors.length > 0) {
+      internalDebugInfo.jpegDecodeErrors = jpegDecodeErrors;
+    }
   }
 
   const debugInfo: OcrDebugInfo | undefined = {
