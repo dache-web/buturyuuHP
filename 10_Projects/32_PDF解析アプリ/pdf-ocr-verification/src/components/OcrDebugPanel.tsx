@@ -433,6 +433,22 @@ export function OcrDebugPanel({ page }: OcrDebugPanelProps) {
             </div>
           )}
 
+          {debugInfo.internalDebugInfo.workerCommDebug && debugInfo.internalDebugInfo.workerCommDebug.debugErrors && debugInfo.internalDebugInfo.workerCommDebug.debugErrors.length > 0 && (
+            <div style={{ marginTop: '1rem', overflowX: 'auto', backgroundColor: '#fff3f3', padding: '0.5rem', border: '1px solid #ffcccc' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', color: 'red' }}>Worker Decode Failure</h4>
+              <div style={{ fontSize: '0.75rem' }}>
+                <p><strong>Object ID:</strong> {debugInfo.internalDebugInfo.workerCommDebug.debugErrors[0].objId}</p>
+                <p><strong>Error Name:</strong> {debugInfo.internalDebugInfo.workerCommDebug.debugErrors[0].name}</p>
+                <p><strong>Error Message:</strong> {debugInfo.internalDebugInfo.workerCommDebug.debugErrors[0].message}</p>
+                <p><strong>Same Error Count:</strong> {debugInfo.internalDebugInfo.workerCommDebug.debugErrors.length} / {debugInfo.internalDebugInfo.hasPaintJpegXObject ? debugInfo.internalDebugInfo.paintImageXObjectCount : '?'}</p>
+                <p><strong>Stack:</strong></p>
+                <pre style={{ margin: 0, padding: '4px', backgroundColor: '#f5f5f5', border: '1px solid #ccc', maxHeight: '100px', overflowY: 'auto' }}>
+                  {debugInfo.internalDebugInfo.workerCommDebug.debugErrors[0].stack}
+                </pre>
+              </div>
+            </div>
+          )}
+
           {debugInfo.internalDebugInfo.canvasLifecycle && (
             <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
               <h4 style={{ margin: '0 0 0.5rem 0' }}>Canvas Lifecycle</h4>

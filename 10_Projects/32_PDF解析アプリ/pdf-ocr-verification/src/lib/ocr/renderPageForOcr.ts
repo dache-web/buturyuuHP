@@ -133,10 +133,18 @@ export interface ResolveEvent {
   valueIsNull: boolean;
 }
 
+export interface DebugErrorEvent {
+  objId: string;
+  name: string;
+  message: string;
+  stack: string;
+}
+
 export interface WorkerCommDebug {
   resolveCalledCount: number;
   resolveEvents: ResolveEvent[];
   rejectExceptions: string[];
+  debugErrors?: DebugErrorEvent[];
 }
 
 export interface PdfInternalDebugInfo {
@@ -383,6 +391,11 @@ export async function renderPageForOcr(
         originalResolve = pageAny.objs.resolve.bind(pageAny.objs);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         pageAny.objs.resolve = (objId: string, data: any) => {
+          if (objId === '__DEBUG_ERROR__') {
+            workerCommDebug.debugErrors = workerCommDebug.debugErrors || [];
+            workerCommDebug.debugErrors.push(data);
+            return;
+          }
           workerCommDebug.resolveCalledCount++;
           workerCommDebug.resolveEvents.push({
             objectId: objId,
