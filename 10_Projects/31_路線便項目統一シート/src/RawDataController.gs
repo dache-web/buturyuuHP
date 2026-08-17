@@ -334,22 +334,49 @@ class RawDataController {
     }
 
     // 6.4 会社別マッピングシート (＜会社名＞_マッピング) への成果物全件表示書き込み
-    if (companyName === "不明" || !companyName) {
-      companyName = companyCode;
+    console.log("[MAPPING_OUTPUT] start");
+    let targetCompanyName = companyName;
+    if (!targetCompanyName || targetCompanyName === "不明") {
+      const carrierSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CARRIER);
+      if (carrierSheet && carrierSheet.getLastRow() > 1) {
+        const cData = carrierSheet.getDataRange().getValues();
+        for (let i = 1; i < cData.length; i++) {
+          if (cData[i][1] === companyCode && cData[i][2]) {
+            targetCompanyName = cData[i][2];
+            break;
+          }
+        }
+      }
+    }
+    if (!targetCompanyName || targetCompanyName === "不明") {
+      targetCompanyName = companyCode;
     }
 
-    const companyMappingSheetName = `${companyName}_マッピング`;
-    let mappingSheet = ss.getSheetByName(companyMappingSheetName);
-    if (!mappingSheet) {
-      mappingSheet = ss.insertSheet(companyMappingSheetName);
-    } else {
-      mappingSheet.clearContents();
-    }
+    const companyMappingSheetName = `${targetCompanyName}_マッピング`;
+    console.log("[MAPPING_OUTPUT] companyName=", targetCompanyName);
+    console.log("[MAPPING_OUTPUT] sheetName=", companyMappingSheetName);
+    console.log("[MAPPING_OUTPUT] rowCount=", standardizedRows ? standardizedRows.length : 0);
+    console.log("[MAPPING_OUTPUT] before sheet create");
 
-    const csvHeaders = CONFIG.STANDARDIZED_CSV_HEADERS;
-    const mappingOutputRows = [csvHeaders].concat(finalRowsToSave);
-    if (mappingOutputRows.length > 0) {
-      mappingSheet.getRange(1, 1, mappingOutputRows.length, csvHeaders.length).setValues(mappingOutputRows);
+    try {
+      let mappingSheet = ss.getSheetByName(companyMappingSheetName);
+      if (!mappingSheet) {
+        mappingSheet = ss.insertSheet(companyMappingSheetName);
+      } else {
+        mappingSheet.clearContents();
+      }
+      console.log("[MAPPING_OUTPUT] after sheet create");
+
+      const csvHeaders = CONFIG.STANDARDIZED_CSV_HEADERS;
+      const mappingOutputRows = [csvHeaders].concat(standardizedRows);
+      
+      console.log("[MAPPING_OUTPUT] before setValues. totalRows=", mappingOutputRows.length, "cols=", csvHeaders.length);
+      if (mappingOutputRows.length > 0) {
+        mappingSheet.getRange(1, 1, mappingOutputRows.length, csvHeaders.length).setValues(mappingOutputRows);
+      }
+      console.log("[MAPPING_OUTPUT] after setValues SUCCESS");
+    } catch (err) {
+      console.error("[MAPPING_OUTPUT] ERROR", err);
     }
     
     // 6.5 取込原本SSoT(15_取込一時データ)への保存
