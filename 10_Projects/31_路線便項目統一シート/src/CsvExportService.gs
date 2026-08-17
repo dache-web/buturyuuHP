@@ -36,9 +36,11 @@ class CsvExportService {
     
     const companyCodeIdx = headers.indexOf("路線便会社コード");
     const targetMonthIdx = headers.indexOf("対象年月");
+    const errorFlagIdx = headers.indexOf("エラー有無");
     
     const exportData = [fixedHeaders];
     let companyNameForFilename = "全路線会社";
+    let hasErrorInTarget = false;
     
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
@@ -46,6 +48,10 @@ class CsvExportService {
       const matchMonth = !targetMonth || row[targetMonthIdx] === targetMonth;
       
       if (matchCompany && matchMonth) {
+        if (errorFlagIdx > -1 && (row[errorFlagIdx] === true || String(row[errorFlagIdx]).toUpperCase() === "TRUE")) {
+          hasErrorInTarget = true;
+        }
+
         if (companyCode && exportData.length === 1) {
           // ファイル名用に会社名を保持
           const nameIdx = headers.indexOf("路線便会社名");
@@ -71,6 +77,10 @@ class CsvExportService {
     
     if (exportData.length <= 1) {
       throw new Error("指定された条件（" + (companyCode || "全社") + " / " + targetMonth + "）に一致するデータがありません。");
+    }
+
+    if (hasErrorInTarget) {
+      throw new Error("標準化データ内に未解消のエラーが含まれています。マッピングを修正してエラーを0件にしてからCSVを出力してください。");
     }
 
     // CSV文字列の構築（エスケープ処理込み）

@@ -363,7 +363,10 @@ class RawDataController {
       success: true,
       message: `標準化が完了しました。\n\n新規：${newCount}件\n重複：${duplicateCount}件\nエラー：${errorCount}件\n\n保存先：\n23_標準化出荷データ`,
       processedCount: finalRowsToSave.length,
-      errorDetails: errorDetails
+      errorDetails: errorDetails,
+      newCount: newCount,
+      duplicateCount: duplicateCount,
+      errorCount: errorCount
     };
     
     } catch (e) {
