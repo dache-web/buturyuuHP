@@ -349,11 +349,103 @@ class RawDataController {
       }
     }
     if (!targetCompanyName || targetCompanyName === "不明") {
-      targetCompanyName = companyCode;
+targetCompanyName = companyCode;
     }
 
     const timeStampStr = Utilities.formatDate(now, tz, "yyyyMMdd_HHmm");
     const companyMappingSheetName = `${targetCompanyName}_${timeStampStr}_マッピング`;
+    const defSheetName = `${targetCompanyName}_${timeStampStr}_標準化定義`;
+
+    // 6.3 会社別標準化定義シート (＜会社名＞_YYYYMMDD_HHmm_標準化定義) への設定一覧書き込み
+    try {
+      let defSheet = ss.getSheetByName(defSheetName);
+      if (!defSheet) {
+        defSheet = ss.insertSheet(defSheetName);
+      } else {
+        defSheet.clearContents();
+      }
+
+      const defHeaders = ["元項目名", "標準化項目名", "使用区分", "変換方法", "結合ID", "結合順", "結合方法", "計算区分", "加算・減算", "備考"];
+      const defRows = [defHeaders];
+
+      // 計算ルールの解析マップ
+      const calcRuleMap = {};
+      if (calcMethod === "計算" && finalCalcRuleStr) {
+        try {
+          const ruleObj = JSON.parse(finalCalcRuleStr);
+          if (ruleObj && ruleObj.fields) {
+            ruleObj.fields.forEach(f => {
+              calcRuleMap[f.sourceIndex] = f.operator || "+";
+            });
+          }
+        } catch(e) {}
+      }
+
+      // 重複マッピング（結合）のカウントマップ
+      const commonFieldCounts = {};
+      if (mapping && mapping.length > 0) {
+        mapping.forEach(m => {
+          if (m.commonField && m.commonField !== "未使用" && m.commonField !== "-- 未選択 --") {
+            commonFieldCounts[m.commonField] = (commonFieldCounts[m.commonField] || 0) + 1;
+          }
+        });
+      }
+
+      const joinOrderTracker = {};
+
+      if (mapping && mapping.length > 0) {
+        mapping.forEach((m, idx) => {
+          const origName = m.originalName || `列${idx+1}`;
+          const commField = m.commonField || "";
+          const isUsed = commField && commField !== "未使用" && commField !== "-- 未選択 --";
+
+          let convertMethod = isUsed ? "単体" : "未使用";
+          let joinId = "";
+          let joinOrder = "";
+          let joinMethod = "";
+          let calcType = "";
+          let calcOp = "";
+
+          if (isUsed) {
+            if (commonFieldCounts[commField] > 1) {
+              convertMethod = "結合";
+              joinId = `JOIN_${commField}`;
+              joinOrderTracker[commField] = (joinOrderTracker[commField] || 0) + 1;
+              joinOrder = joinOrderTracker[commField];
+              joinMethod = "半角スペース";
+            }
+
+            if (calcMethod === "計算" && calcRuleMap[m.originalIndex] !== undefined) {
+              convertMethod = (convertMethod === "結合") ? "結合・計算" : "計算";
+              calcType = "運賃計算";
+              calcOp = calcRuleMap[m.originalIndex] === "-" ? "減算 (－)" : "加算 (＋)";
+            }
+          }
+
+          defRows.push([
+            origName,
+            isUsed ? commField : "",
+            isUsed ? "使用" : "未使用",
+            convertMethod,
+            joinId,
+            joinOrder,
+            joinMethod,
+            calcType,
+            calcOp,
+            ""
+          ]);
+        });
+      }
+
+      if (defRows.length > 0) {
+        defSheet.getRange(1, 1, defRows.length, defHeaders.length).setValues(defRows);
+      }
+    } catch (err) {
+      console.error("[DEF_SHEET_OUTPUT] ERROR", err);
+    }
+
+    // 6.4 会社別マッピングシート (＜会社名＞_YYYYMMDD_HHmm_マッピング) への成果物全件表示書き込み
+    console.log("[MAPPING_OUTPUT] start");
     console.log("[MAPPING_OUTPUT] companyName=", targetCompanyName);
     console.log("[MAPPING_OUTPUT] sheetName=", companyMappingSheetName);
     console.log("[MAPPING_OUTPUT] rowCount=", standardizedRows ? standardizedRows.length : 0);
