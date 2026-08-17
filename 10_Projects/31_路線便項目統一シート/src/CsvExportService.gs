@@ -37,6 +37,7 @@ class CsvExportService {
     const companyCodeIdx = headers.indexOf("路線便会社コード");
     const targetMonthIdx = headers.indexOf("対象年月");
     const errorFlagIdx = headers.indexOf("エラー有無");
+    const validFlagIdx = headers.indexOf("有効フラグ");
     
     const exportData = [fixedHeaders];
     let companyNameForFilename = "全路線会社";
@@ -46,8 +47,9 @@ class CsvExportService {
       const row = data[i];
       const matchCompany = !companyCode || row[companyCodeIdx] === companyCode;
       const matchMonth = !targetMonth || row[targetMonthIdx] === targetMonth;
-      
-      if (matchCompany && matchMonth) {
+      const isValidRow = validFlagIdx === -1 || row[validFlagIdx] === true || String(row[validFlagIdx]).toUpperCase() === "TRUE" || row[validFlagIdx] === "" || row[validFlagIdx] === null;
+
+      if (matchCompany && matchMonth && isValidRow) {
         if (errorFlagIdx > -1 && (row[errorFlagIdx] === true || String(row[errorFlagIdx]).toUpperCase() === "TRUE")) {
           hasErrorInTarget = true;
         }
