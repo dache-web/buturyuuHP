@@ -717,13 +717,48 @@
 
     google.script.run
       .withSuccessHandler(res => {
-        hideLoading();
-        if (res && res.success) {
-          alert("取り込みおよび標準化処理が正常に完了しました！");
-          google.script.host.close();
-        } else {
+        if (!res || !res.success) {
+          hideLoading();
           alert("標準化処理エラー: " + (res ? res.message : "不明なエラー"));
+          return;
         }
+
+        const successMsg = res.message || "標準化処理が完了しました。";
+
+        showLoading("標準化CSVを出力中...");
+        google.script.run
+          .withSuccessHandler(csvRes => {
+            hideLoading();
+            if (csvRes && csvRes.contentBase64) {
+              try {
+                const byteCharacters = atob(csvRes.contentBase64);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", csvRes.filename || "standardized.csv");
+                link.style.display = "none";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              } catch(e) {
+                console.error("CSVダウンロード処理エラー:", e);
+              }
+            }
+            alert(successMsg);
+            google.script.host.close();
+          })
+          .withFailureHandler(csvErr => {
+            hideLoading();
+            alert(successMsg + "\n\n(※CSV出力通知: " + csvErr.message + ")");
+            google.script.host.close();
+          })
+          .apiGenerateCsv(payload.companyCode, null);
       })
       .withFailureHandler(err => {
         hideLoading();
