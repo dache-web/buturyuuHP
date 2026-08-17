@@ -498,15 +498,27 @@ targetCompanyName = companyCode;
       });
     }
 
+    // 6.6 エラー0件時のみ Google Drive (「路線便_標準化CSV」) へ自動保存
+    let driveResult = null;
+    if (errorCount === 0) {
+      driveResult = CsvExportService.saveCsvToDrive(companyCode, null);
+    }
+
+    let saveMessage = `保存先：\n【${companyMappingSheetName}】および 23_標準化出荷データ`;
+    if (driveResult && driveResult.success) {
+      saveMessage += `\nGoogle Drive保存：【${driveResult.folderName}/${driveResult.filename}】`;
+    }
+
     return {
       success: true,
-      message: `標準化が完了しました。\n\n新規：${newCount}件\n重複：${duplicateCount}件\nエラー：${errorCount}件\n\n保存先：\n【${companyMappingSheetName}】および 23_標準化出荷データ`,
+      message: `標準化が完了しました。\n\n新規：${newCount}件\n重複：${duplicateCount}件\nエラー：${errorCount}件\n\n${saveMessage}`,
       processedCount: finalRowsToSave.length,
       errorDetails: errorDetails,
       newCount: newCount,
       duplicateCount: duplicateCount,
       errorCount: errorCount,
-      mappingSheetName: companyMappingSheetName
+      mappingSheetName: companyMappingSheetName,
+      driveResult: driveResult
     };
     
     } catch (e) {

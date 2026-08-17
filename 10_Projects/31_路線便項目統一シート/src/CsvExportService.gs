@@ -190,4 +190,41 @@ class CsvExportService {
       contentBase64: contentBase64
     };
   }
+
+  /**
+   * エラー0件の標準化CSVを Google Drive の 「路線便_標準化CSV」 フォルダへ保存します。
+   * @param {string} companyCode 路線便会社コード
+   * @param {string} targetMonth 対象年月
+   * @returns {object} { success: boolean, fileId: string, filename: string, folderName: string }
+   */
+  static saveCsvToDrive(companyCode, targetMonth) {
+    try {
+      const csvResult = this.generateCsv(companyCode, targetMonth);
+      if (!csvResult || !csvResult.contentBase64) return null;
+
+      const folderName = "路線便_標準化CSV";
+      const folders = DriveApp.getFoldersByName(folderName);
+      let targetFolder;
+      if (folders.hasNext()) {
+        targetFolder = folders.next();
+      } else {
+        targetFolder = DriveApp.createFolder(folderName);
+      }
+
+      const byteCharacters = Utilities.base64Decode(csvResult.contentBase64);
+      const blob = Utilities.newBlob(byteCharacters, 'text/csv;charset=utf-8;', csvResult.filename);
+      const file = targetFolder.createFile(blob);
+
+      console.log(`[DRIVE_SAVE_SUCCESS] ${csvResult.filename} saved to ${folderName} (ID: ${file.getId()})`);
+      return {
+        success: true,
+        fileId: file.getId(),
+        filename: csvResult.filename,
+        folderName: folderName
+      };
+    } catch (err) {
+      console.error("[DRIVE_SAVE_ERROR]", err);
+      return { success: false, error: err.message };
+    }
+  }
 }
