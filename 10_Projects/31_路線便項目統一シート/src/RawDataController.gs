@@ -334,19 +334,8 @@ class RawDataController {
     }
 
     // 6.4 会社別マッピングシート (＜会社名＞_マッピング) への成果物全件表示書き込み
-    let companyName = companyCode;
-    const carrierSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CARRIER_MASTER);
-    if (carrierSheet && carrierSheet.getLastRow() > 1) {
-      const cData = carrierSheet.getDataRange().getValues();
-      const cHeaders = cData[0];
-      const codeIdx = cHeaders.indexOf("路線便会社コード");
-      const nameIdx = cHeaders.indexOf("路線便会社名");
-      for (let i = 1; i < cData.length; i++) {
-        if (cData[i][codeIdx] === companyCode && cData[i][nameIdx]) {
-          companyName = cData[i][nameIdx];
-          break;
-        }
-      }
+    if (companyName === "不明" || !companyName) {
+      companyName = companyCode;
     }
 
     const companyMappingSheetName = `${companyName}_マッピング`;
