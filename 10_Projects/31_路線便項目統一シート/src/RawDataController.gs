@@ -523,13 +523,21 @@ class RawDataController {
       if (valStr !== "") {
         // 全角数字を半角数字へ変換
         valStr = valStr.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0));
-        // 全角マイナス・ハイフンを半角マイナスへ変換
-        valStr = valStr.replace(/[－ー―\u2212]/g, "-");
         // カンマ、円記号、￥記号、スペースの除去
-        valStr = valStr.replace(/[,，円￥\\¥\s　]/g, "");
-        // 単一のハイフン "-" のみ（実務表記での0円）は "0" とみなす
-        if (valStr === "-") {
+        const cleanedStr = valStr.replace(/[,，円￥\\¥\s　]/g, "");
+        
+        // 明確に料金が存在しないことを表す表記 (-> 0円)
+        const noChargeWords = ["なし", "対象外", "非該当", "-", "－", "--", "---", "-円", "0", "0円", "ー", "―", "¥0", "￥0"];
+        
+        // 未設定・値が不明な表記 (-> 空白維持とし、0にしない)
+        const unassignedWords = ["未設定", "未確認", "不明", "N/A", "n/a", "確認中"];
+        
+        if (noChargeWords.includes(cleanedStr) || noChargeWords.includes(valStr)) {
           valStr = "0";
+        } else if (unassignedWords.includes(cleanedStr) || unassignedWords.includes(valStr)) {
+          valStr = "";
+        } else {
+          valStr = cleanedStr;
         }
       }
       
