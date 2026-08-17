@@ -64,7 +64,8 @@ class ImportController {
       commonFields: CONFIG.MAPPABLE_FIELDS,
       requiredFields: CONFIG.MAPPING_REQUIRED_FIELDS,
       existingSheets: existingSheets,
-      realValues: typeof getImportRealValues === 'function' ? getImportRealValues() : null
+      realValues: typeof getImportRealValues === 'function' ? getImportRealValues() : null,
+      rawErrorRows: typeof inspectRawErrorRows === 'function' ? inspectRawErrorRows() : null
     };
   }
 

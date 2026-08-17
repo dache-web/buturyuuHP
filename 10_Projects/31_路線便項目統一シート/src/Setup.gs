@@ -154,3 +154,44 @@ function getImportRealValues() {
   console.log("【実機データ計測結果】", JSON.stringify(resultObj));
   return resultObj;
 }
+
+function inspectRawErrorRows() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const tempSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.TEMP_DATA);
+  const roleSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.ROLE_MASTER);
+
+  const targetRawIds = ["RAW-20260818-0226", "RAW-20260818-0227"];
+  const results = {};
+
+  if (!tempSheet || tempSheet.getLastRow() <= 1) {
+    console.log("15_取込一時データが存在しません。");
+    return results;
+  }
+
+  const tData = tempSheet.getDataRange().getValues();
+  const tHeaders = tData[0];
+  const rawIdIdx = tHeaders.indexOf("原本データID");
+  const jsonIdx = tHeaders.indexOf("元データJSON");
+  const fmtIdIdx = tHeaders.indexOf("取込フォーマットID");
+
+  for (let i = 1; i < tData.length; i++) {
+    const rawId = String(tData[i][rawIdIdx]);
+    // 全体または部分一致で特定
+    if (targetRawIds.includes(rawId) || targetRawIds.some(id => rawId.includes(id.substring(4)))) {
+      const formatId = tData[i][fmtIdIdx];
+      let rawJsonObj = null;
+      try {
+        rawJsonObj = JSON.parse(tData[i][jsonIdx]);
+      } catch(e) {}
+
+      results[rawId] = {
+        rawId: rawId,
+        formatId: formatId,
+        rawJson: rawJsonObj
+      };
+    }
+  }
+
+  console.log("【エラー行調査結果】", JSON.stringify(results, null, 2));
+  return results;
+}

@@ -518,7 +518,22 @@ class RawDataController {
     if (surchargeMapping) {
       surchargeSourceFound = true;
       const rawVal = row[surchargeMapping.originalIndex];
-      rawSurchargeValStr = (rawVal === null || rawVal === undefined) ? "" : String(rawVal).replace(/[,，円\s　]/g, "");
+      let valStr = (rawVal === null || rawVal === undefined) ? "" : String(rawVal).trim();
+      
+      if (valStr !== "") {
+        // 全角数字を半角数字へ変換
+        valStr = valStr.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0));
+        // 全角マイナス・ハイフンを半角マイナスへ変換
+        valStr = valStr.replace(/[－ー―\u2212]/g, "-");
+        // カンマ、円記号、￥記号、スペースの除去
+        valStr = valStr.replace(/[,，円￥\\¥\s　]/g, "");
+        // 単一のハイフン "-" のみ（実務表記での0円）は "0" とみなす
+        if (valStr === "-") {
+          valStr = "0";
+        }
+      }
+      
+      rawSurchargeValStr = valStr;
     }
     
     let surchargeNum = "";
