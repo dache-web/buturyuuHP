@@ -182,36 +182,56 @@
     <strong>対象会社：</strong><span id="targetCompanyName"></span>
   </div>
 
-  <div class="form-group" style="margin-top:10px;">
-    <label>運賃算出方法：</label>
-    <label style="display:inline-block; font-weight:normal; margin-right:15px;">
-      <input type="radio" name="calcMethod" id="calcMethod_direct" value="直接取得" checked onchange="checkMultiSelect()"> 実績運賃列を直接使用
-    </label>
-    <label style="display:inline-block; font-weight:normal;">
-      <input type="radio" name="calcMethod" id="calcMethod_calc" value="計算" onchange="checkMultiSelect()"> 明細項目（基本運賃＋各種料金）から合算計算
-    </label>
-  </div>
-
+  <!-- 契約プロファイル設定（元仕様復元） -->
   <div class="form-group" id="contractProfileGroup">
     <label for="contractProfileSelect">契約プロファイル選択：</label>
     <select id="contractProfileSelect" onchange="onContractProfileChange()">
       <option value="">-- 新規作成 または 未設定 --</option>
     </select>
+    <div id="newContractProfileGroup" style="display:none; margin-top:8px; background:#fff; padding:10px; border:1px solid #cbd5e0; border-radius:4px;">
+      <div style="margin-bottom:8px;">
+        <label for="newContractProfileName" style="font-size:0.85rem;">新規契約プロファイル名：</label>
+        <input type="text" id="newContractProfileName" placeholder="例: 路線便A社 2026年度運賃契約">
+      </div>
+      <div>
+        <label for="newContractIdentifier" style="font-size:0.85rem;">荷主・契約識別情報：</label>
+        <input type="text" id="newContractIdentifier" placeholder="例: 埼玉センター発着契約">
+      </div>
+    </div>
   </div>
 
+  <!-- サーチャージ取扱区分（正式6区分復元） -->
   <div class="form-group" id="surchargeHandlingGroup">
     <label for="surchargeHandling">サーチャージ等の扱い：</label>
     <select id="surchargeHandling" onchange="checkMultiSelect()">
-      <option value="UNCONFIRMED">未設定</option>
-      <option value="INCLUDED">基本運賃に含める（別途請求なし）</option>
-      <option value="SEPARATE">基本運賃とは別に加算して計算</option>
-      <option value="NOT_APPLICABLE">サーチャージ対象外契約</option>
+      <option value="UNCONFIRMED">未設定／要確認</option>
+      <option value="NONE">なし</option>
+      <option value="INCLUDED">実績運賃に内包</option>
+      <option value="ADDED">実績運賃へ加算済み</option>
+      <option value="DETAIL_SEPARATE">明細別料金</option>
+      <option value="PERIOD_SEPARATE">期間合計料金</option>
     </select>
     <div id="surchargeWarning" style="color:#e53e3e; font-size:0.85rem; display:none; margin-top:4px;"></div>
   </div>
 
+  <!-- 【実績運賃の作り方】 UI復元 -->
+  <div class="form-group" id="calcMethodGroup" style="margin-top:15px; background:#fff; padding:10px; border:1px solid #cbd5e0; border-radius:4px;">
+    <label style="font-size:0.95rem; font-weight:bold; color:#2d3748; margin-bottom:8px; display:block;">【実績運賃の作り方】</label>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <label style="font-weight:normal; cursor:pointer;">
+        <input type="radio" name="calcMethod" id="calcMethod_direct" value="直接取得" checked onchange="checkMultiSelect()"> 元データの実績運賃をそのまま使う
+      </label>
+      <label style="font-weight:normal; cursor:pointer;">
+        <input type="radio" name="calcMethod" id="calcMethod_calc" value="計算" onchange="checkMultiSelect()"> 複数項目を計算して作る
+      </label>
+    </div>
+  </div>
+
+  <!-- 合算計算ルール設定エリア（「複数項目を計算して作る」選択時に直下表示） -->
   <div id="calc-settings-area" style="display:none; margin-top:10px; background:#fffaf0; padding:10px; border:1px solid #fbd38d; border-radius:4px;">
-    <div id="aggregateNotice"></div>
+    <div id="aggregateNotice" style="margin-bottom:8px; font-weight:bold; color:#744210; font-size:0.85rem;"></div>
+    <label style="font-size:0.9rem; font-weight:bold; color:#2d3748;">合算対象項目の加減算設定（＋／－）：</label>
+    <div id="calc-items-list" style="margin-top:6px; background:#fff; padding:8px; border:1px solid #e2e8f0; border-radius:4px;"></div>
   </div>
 
   <div style="max-height: 350px; overflow-y: auto; margin-top: 10px;">
@@ -240,6 +260,7 @@
   let serverData = {};
   let currentSession = {};
   let selectedFile = null;
+  let calcOperators = {}; // { originalIndex: '+' または '-' }
 
   window.onload = function() {
     showLoading("初期データ取得中...");
@@ -300,7 +321,6 @@
 
     showLoading("ファイル解析中...");
     
-    // form要素ごとapiProcessFileへ渡す (再選択ダイアログは絶対発動しない)
     const formElement = document.getElementById('importForm');
     
     google.script.run
@@ -327,6 +347,17 @@
           document.getElementById('calcMethod_direct').checked = true;
         }
 
+        if (res.calcRule) {
+          try {
+            const ruleArr = typeof res.calcRule === "string" ? JSON.parse(res.calcRule) : res.calcRule;
+            if (ruleArr && ruleArr.fields) {
+              ruleArr.fields.forEach(f => {
+                calcOperators[f.sourceIndex] = f.operator;
+              });
+            }
+          } catch(e) {}
+        }
+
         const cpSelect = document.getElementById('contractProfileSelect');
         if (cpSelect) {
           cpSelect.innerHTML = '<option value="">-- 新規作成 または 未設定 --</option>';
@@ -346,6 +377,7 @@
           if (sHandling) sHandling.value = res.defaultSurchargeHandling || "UNCONFIRMED";
         }
 
+        onContractProfileChange();
         renderMappingTable();
         goToStep(2);
       })
@@ -436,8 +468,13 @@
 
   function onContractProfileChange() {
     const sel = document.getElementById('contractProfileSelect');
+    const group = document.getElementById('newContractProfileGroup');
     if (!sel) return;
-    if (sel.value !== "") {
+    
+    if (sel.value === "") {
+      if (group) group.style.display = "block";
+    } else {
+      if (group) group.style.display = "none";
       const opt = sel.options[sel.selectedIndex];
       const surcharge = opt.dataset.surcharge;
       if (surcharge) {
@@ -445,6 +482,52 @@
       }
     }
     checkMultiSelect();
+  }
+
+  function renderCalcItems() {
+    const calcRoles = ["基本運賃", "中継料", "燃料サーチャージ", "その他加算料金", "値引額", "その他運賃関連項目"];
+    const listDiv = document.getElementById('calc-items-list');
+    if (!listDiv || !currentSession || !currentSession.predictions) return;
+
+    const calcFields = [];
+    currentSession.predictions.forEach((_, idx) => {
+      const el = document.getElementById(`map_${idx}`);
+      if (!el) return;
+      const val = el.value;
+      if (calcRoles.includes(val)) {
+        calcFields.push({ idx: idx, role: val, name: currentSession.predictions[idx].originalName });
+      }
+    });
+
+    listDiv.innerHTML = '';
+    if (calcFields.length === 0) {
+      listDiv.innerHTML = '<span style="font-size:0.85rem; color:#991B1B;">計算用項目（基本運賃・燃料サーチャージ等）がマッピングされていません。</span>';
+    } else {
+      calcFields.forEach(f => {
+        if (!calcOperators[f.idx]) {
+          calcOperators[f.idx] = (f.role === "値引額") ? "-" : "+";
+        }
+        const op = calcOperators[f.idx];
+
+        const div = document.createElement('div');
+        div.style.marginBottom = "6px";
+        div.style.display = "flex";
+        div.style.alignItems = "center";
+        div.innerHTML = `
+          <select onchange="updateCalcOperator(${f.idx}, this.value)" style="width:110px; margin-right:10px; padding:3px; font-weight:bold;">
+            <option value="+" ${op === "+" ? "selected" : ""}>＋ (加算)</option>
+            <option value="-" ${op === "-" ? "selected" : ""}>－ (減算)</option>
+          </select>
+          <strong style="margin-right:6px;">${f.name}</strong>
+          <span style="font-size:0.8rem; color:#666;">(${f.role})</span>
+        `;
+        listDiv.appendChild(div);
+      });
+    }
+  }
+
+  function updateCalcOperator(idx, val) {
+    calcOperators[idx] = val;
   }
 
   function checkMultiSelect() {
@@ -466,6 +549,7 @@
 
     if (calcMethod === "計算") {
       calcSettingsArea.style.display = "block";
+      renderCalcItems();
       const noticeDiv = document.getElementById('aggregateNotice');
       if (noticeDiv) {
         noticeDiv.innerHTML = '<p style="margin:0; font-size:0.85rem; color:#744210;">合算計算を使用します。実績運賃への直接マッピングは使用されません。</p>';
@@ -529,6 +613,27 @@
       }
     }
 
+    // サーチャージの扱い未設定チェック
+    const handlingEl = document.getElementById('surchargeHandling');
+    const surchargeWarning = document.getElementById('surchargeWarning');
+    if (handlingEl && surchargeWarning) {
+      const surchargeHandling = handlingEl.value;
+      const hasSurchargeItem = counts["燃料サーチャージ"] > 0 || counts["その他加算料金"] > 0;
+      if (hasSurchargeItem && surchargeHandling === "UNCONFIRMED") {
+        surchargeWarning.style.display = "block";
+        surchargeWarning.textContent = "サーチャージ関連の項目がありますが、扱いが「未設定」です。";
+        hasConflict = true;
+        conflictMsgs.push("・サーチャージの扱いが未設定です");
+      } else if (surchargeHandling === "UNCONFIRMED") {
+        surchargeWarning.style.display = "block";
+        surchargeWarning.textContent = "サーチャージの扱いが未設定です。";
+        hasConflict = true;
+        conflictMsgs.push("・サーチャージの扱いが未設定です");
+      } else {
+        surchargeWarning.style.display = "none";
+      }
+    }
+
     const btn = document.getElementById('btn-confirm-mapping');
     const warningDiv = document.getElementById('mapping-validation-warning');
     if (hasConflict) {
@@ -576,13 +681,35 @@
       });
     });
 
+    let calcRuleObjStr = "";
+    if (calcMethod === "計算") {
+      const calcRoles = ["基本運賃", "中継料", "燃料サーチャージ", "その他加算料金", "値引額", "その他運賃関連項目"];
+      const fields = [];
+      currentSession.predictions.forEach((pred, idx) => {
+        const val = document.getElementById(`map_${idx}`).value;
+        if (calcRoles.includes(val)) {
+          fields.push({
+            sourceName: pred.originalName,
+            sourceIndex: idx,
+            role: val,
+            operator: calcOperators[idx] || (val === "値引額" ? "-" : "+")
+          });
+        }
+      });
+      calcRuleObjStr = JSON.stringify({ type: "calc", fields: fields });
+    }
+
     const cpSel = document.getElementById('contractProfileSelect');
+    const isNewCp = !cpSel.value;
     const payload = {
       companyCode: currentSession.companyCode,
       fileName: currentSession.fileName,
       formatSignature: currentSession.formatSignature,
       calcMethod: calcMethod,
+      calcRule: calcRuleObjStr,
       contractProfileId: cpSel ? cpSel.value : "",
+      contractProfileName: isNewCp ? document.getElementById('newContractProfileName').value : "",
+      contractIdentifier: isNewCp ? document.getElementById('newContractIdentifier').value : "",
       surchargeHandling: document.getElementById('surchargeHandling').value,
       mapping: finalMapping,
       rawData: currentSession.rawData
