@@ -44,6 +44,33 @@ function showExistingSheetImportDialog() {
   SpreadsheetApp.getUi().showModalDialog(html, '路線便データ取込（既存シート）');
 }
 
+function verifyCompanyMappingResult() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+  const mappingSheets = sheets.filter(s => s.getName().endsWith("_マッピング"));
+  
+  console.log("【マッピングシート一覧】", mappingSheets.map(s => s.getName()));
+  
+  if (mappingSheets.length === 0) {
+    console.log("まだ会社別マッピングシートが生成されていません。");
+    return false;
+  }
+  
+  const targetSheet = mappingSheets[0];
+  const data = targetSheet.getDataRange().getValues();
+  console.log("【シート名】", targetSheet.getName());
+  console.log("【全データ行数】", data.length - 1);
+  
+  if (data.length > 1) {
+    console.log("【ヘッダー】", data[0].join(" | "));
+    console.log("--- 上位5行照合 ---");
+    for (let i = 1; i <= Math.min(5, data.length - 1); i++) {
+      console.log(`[行${i}]`, JSON.stringify(data[i]));
+    }
+  }
+  return true;
+}
+
 /**
  * メニューからのシステム構成チェック呼び出し
  */

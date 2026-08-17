@@ -332,6 +332,36 @@ class RawDataController {
         analysisSheet.getRange(analysisSheet.getLastRow() + 1, 1, finalRowsToSave.length, fixedHeaders.length).setValues(finalRowsToSave);
       }
     }
+
+    // 6.4 会社別マッピングシート (＜会社名＞_マッピング) への成果物全件表示書き込み
+    let companyName = companyCode;
+    const carrierSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CARRIER_MASTER);
+    if (carrierSheet && carrierSheet.getLastRow() > 1) {
+      const cData = carrierSheet.getDataRange().getValues();
+      const cHeaders = cData[0];
+      const codeIdx = cHeaders.indexOf("路線便会社コード");
+      const nameIdx = cHeaders.indexOf("路線便会社名");
+      for (let i = 1; i < cData.length; i++) {
+        if (cData[i][codeIdx] === companyCode && cData[i][nameIdx]) {
+          companyName = cData[i][nameIdx];
+          break;
+        }
+      }
+    }
+
+    const companyMappingSheetName = `${companyName}_マッピング`;
+    let mappingSheet = ss.getSheetByName(companyMappingSheetName);
+    if (!mappingSheet) {
+      mappingSheet = ss.insertSheet(companyMappingSheetName);
+    } else {
+      mappingSheet.clearContents();
+    }
+
+    const csvHeaders = CONFIG.STANDARDIZED_CSV_HEADERS;
+    const mappingOutputRows = [csvHeaders].concat(finalRowsToSave);
+    if (mappingOutputRows.length > 0) {
+      mappingSheet.getRange(1, 1, mappingOutputRows.length, csvHeaders.length).setValues(mappingOutputRows);
+    }
     
     // 6.5 取込原本SSoT(15_取込一時データ)への保存
     const ssotSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.TEMP_DATA);
@@ -361,12 +391,13 @@ class RawDataController {
 
     return {
       success: true,
-      message: `標準化が完了しました。\n\n新規：${newCount}件\n重複：${duplicateCount}件\nエラー：${errorCount}件\n\n保存先：\n23_標準化出荷データ`,
+      message: `標準化が完了しました。\n\n新規：${newCount}件\n重複：${duplicateCount}件\nエラー：${errorCount}件\n\n保存先：\n【${companyMappingSheetName}】および 23_標準化出荷データ`,
       processedCount: finalRowsToSave.length,
       errorDetails: errorDetails,
       newCount: newCount,
       duplicateCount: duplicateCount,
-      errorCount: errorCount
+      errorCount: errorCount,
+      mappingSheetName: companyMappingSheetName
     };
     
     } catch (e) {

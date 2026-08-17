@@ -11,8 +11,78 @@ class CsvExportService {
    */
   static generateCsv(companyCode, targetMonth) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // 路線会社名の取得
+    let companyName = companyCode;
+    const carrierSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CARRIER_MASTER);
+    if (carrierSheet && carrierSheet.getLastRow() > 1) {
+      const cData = carrierSheet.getDataRange().getValues();
+      const cHeaders = cData[0];
+      const codeIdx = cHeaders.indexOf("路線便会社コード");
+      const nameIdx = cHeaders.indexOf("路線便会社名");
+      for (let i = 1; i < cData.length; i++) {
+        if (cData[i][codeIdx] === companyCode && cData[i][nameIdx]) {
+          companyName = cData[i][nameIdx];
+          break;
+        }
+      }
+    }
+
+    const mappingSheetName = `${companyName}_マッピング`;
+    const mappingSheet = ss.getSheetByName(mappingSheetName);
+
+    // ＜会社名＞_マッピング シートが存在する場合は画面と100%一致するCSVを直接生成
+    if (mappingSheet && mappingSheet.getLastRow() > 1) {
+      const mData = mappingSheet.getDataRange().getValues();
+      const mHeaders = mData[0];
+      const errorFlagIdx = mHeaders.indexOf("エラー有無");
+
+      let hasError = false;
+      const exportData = [CONFIG.STANDARDIZED_CSV_HEADERS];
+
+      for (let i = 1; i < mData.length; i++) {
+        const row = mData[i];
+        if (errorFlagIdx > -1 && (row[errorFlagIdx] === true || String(row[errorFlagIdx]).toUpperCase() === "TRUE")) {
+          hasError = true;
+        }
+        const formattedRow = [];
+        for (let col = 0; col < CONFIG.STANDARDIZED_CSV_HEADERS.length; col++) {
+          let cell = row[col];
+          if (cell instanceof Date) {
+            cell = Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd");
+          } else if (cell === null || cell === undefined) {
+            cell = "";
+          }
+          formattedRow.push(cell);
+        }
+        exportData.push(formattedRow);
+      }
+
+      if (hasError) {
+        throw new Error(`【${mappingSheetName}】シート内に未解消のエラーが含まれています。マッピングを修正してエラーを0件にしてからCSVを出力してください。`);
+      }
+
+      const csvString = exportData.map(r => r.map(c => {
+        let str = String(c);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          str = '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      }).join(",")).join("\r\n");
+
+      const bom = '\uFEFF';
+      const finalCsv = bom + csvString;
+      const filename = `${mappingSheetName}.csv`;
+      const contentBase64 = Utilities.base64Encode(Utilities.newBlob(finalCsv).getBytes());
+
+      return {
+        filename: filename,
+        contentBase64: contentBase64
+      };
+    }
+
+    // バックアップフォールバック: 23_標準化出荷データシートからの抽出
     const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.ANALYSIS_DATA);
-    
     if (!sheet || sheet.getLastRow() <= 1) {
       throw new Error("出力する標準化データが存在しません。");
     }
@@ -20,7 +90,7 @@ class CsvExportService {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     
-    // 固定22列と列順が一致しているか確認
+    // 固定ヘッダー確認
     const fixedHeaders = CONFIG.STANDARDIZED_CSV_HEADERS;
     let isHeaderMatch = true;
     for (let i = 0; i < fixedHeaders.length; i++) {
@@ -31,7 +101,7 @@ class CsvExportService {
     }
     
     if (!isHeaderMatch) {
-      throw new Error("23_標準化出荷データの列構成が固定22列と一致しません。システム設定を確認してください。");
+      throw new Error("23_標準化出荷データの列構成が固定ヘッダーと一致しません。システム設定を確認してください。");
     }
     
     const companyCodeIdx = headers.indexOf("路線便会社コード");
@@ -40,7 +110,7 @@ class CsvExportService {
     const validFlagIdx = headers.indexOf("有効フラグ");
     
     const exportData = [fixedHeaders];
-    let companyNameForFilename = "全路線会社";
+    let companyNameForFilename = companyName || "全路線会社";
     let hasErrorInTarget = false;
     
     for (let i = 1; i < data.length; i++) {
