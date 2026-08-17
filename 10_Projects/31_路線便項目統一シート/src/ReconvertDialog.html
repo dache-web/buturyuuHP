@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', sans-serif; padding: 24px; background-color: #f9fafb; color: #111827; }
+      h2 { color: #1f2937; margin-top: 0; font-weight: 600; margin-bottom: 8px; }
+      p.desc { color: #4b5563; font-size: 14px; margin-bottom: 24px; }
+      
+      .form-group { margin-bottom: 16px; }
+      .form-group label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+      
+      input[type="month"], select {
+        width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid #d1d5db;
+        font-family: inherit; font-size: 14px; outline: none; box-sizing: border-box; background: white;
+      }
+      input:focus, select:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.2); }
+      
+      .actions { margin-top: 32px; text-align: right; display: flex; align-items: center; justify-content: flex-end; }
+      .btn { padding: 10px 24px; background-color: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background-color 0.2s; }
+      .btn:hover { background-color: #4338ca; }
+      .btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+      .spinner { margin-right: 12px; color: #4b5563; font-size: 14px; display: none; }
+      
+      #errorArea { display: none; background: #fef2f2; color: #b91c1c; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; border: 1px solid #fecaca; }
+    </style>
+  </head>
+  <body>
+    <h2>過去データの再変換</h2>
+    <p class="desc">項目役割マスタの変更を過去の取込データに適用して、分析用出荷データを再生成します。</p>
+    
+    <div id="errorArea"></div>
+
+    <div class="form-group">
+      <label>対象範囲 <span style="color:red">*</span></label>
+      <select id="scope" onchange="toggleMonthField()" required>
+        <option value="対象会社の指定月">対象会社の指定月</option>
+        <option value="対象会社の全期間">対象会社の全期間</option>
+        <option value="全会社の指定月">全会社の指定月</option>
+        <option value="全会社の全期間">全会社の全期間</option>
+      </select>
+    </div>
+    
+    <div class="form-group" id="companyGroup">
+      <label>対象会社 <span style="color:red">*</span></label>
+      <select id="targetCompany">
+        <option value="C001">路線便会社A</option>
+        <option value="C002">路線便会社B</option>
+        <option value="C003">路線便会社C</option>
+        <option value="C004">路線便会社D</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="monthGroup">
+      <label>対象年月 <span style="color:red">*</span></label>
+      <input type="month" id="targetMonth">
+    </div>
+
+    <div class="actions">
+      <span class="spinner" id="spinner">処理中...</span>
+      <button class="btn" id="submitBtn" onclick="submitReconvert()">再変換を実行</button>
+    </div>
+
+    <script>
+      window.onload = function() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        document.getElementById('targetMonth').value = `${year}-${month}`;
+      };
+
+      function toggleMonthField() {
+        const scope = document.getElementById('scope').value;
+        const monthGroup = document.getElementById('monthGroup');
+        const companyGroup = document.getElementById('companyGroup');
+        
+        if (scope.includes("全期間")) {
+          monthGroup.style.display = 'none';
+        } else {
+          monthGroup.style.display = 'block';
+        }
+        
+        if (scope.includes("全会社")) {
+          companyGroup.style.display = 'none';
+        } else {
+          companyGroup.style.display = 'block';
+        }
+      }
+
+      function submitReconvert() {
+        document.getElementById('errorArea').style.display = 'none';
+        
+        const scope = document.getElementById('scope').value;
+        const targetCompany = document.getElementById('targetCompany').value;
+        const targetMonthVal = document.getElementById('targetMonth').value;
+        const targetMonth = targetMonthVal ? targetMonthVal.replace("-", "/") : "";
+        
+        if (scope.includes("指定月") && !targetMonth) {
+          showError("対象年月は必須です。");
+          return;
+        }
+        
+        const btn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('spinner');
+        btn.disabled = true;
+        spinner.style.display = 'inline';
+        
+        google.script.run
+          .withSuccessHandler(function() {
+            google.script.host.close();
+            google.script.run.showReconvertComplete();
+          })
+          .withFailureHandler(function(err) {
+            showError("エラーが発生しました: " + err.message);
+            btn.disabled = false;
+            spinner.style.display = 'none';
+          })
+          .reconvertAnalysisData(scope, targetCompany, targetMonth);
+      }
+      
+      function showError(msg) {
+        const errArea = document.getElementById('errorArea');
+        errArea.style.display = 'block';
+        errArea.textContent = msg;
+      }
+    </script>
+  </body>
+</html>

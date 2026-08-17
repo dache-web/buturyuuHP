@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>路線便フォーマット統一アプリ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4F46E5;
+      --primary-hover: #4338CA;
+      --bg: #F3F4F6;
+      --card-bg: #FFFFFF;
+      --text: #111827;
+      --border: #E5E7EB;
+      --error: #EF4444;
+      --success: #10B981;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .card { background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 1.5rem; }
+    h1 { color: var(--primary); text-align: center; margin-top: 0; }
+    h2 { border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-top: 0; }
+    
+    .step { display: none; }
+    .step.active { display: block; animation: fadeIn 0.4s; }
+    @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+    
+    .form-group { margin-bottom: 1.5rem; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; }
+    .form-control { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
+    
+    .btn { padding: 0.75rem 1.5rem; font-weight: 600; border-radius: 8px; cursor: pointer; border: none; font-size: 1rem; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-success { background: var(--success); color: white; }
+    
+    .mapping-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .mapping-table th, .mapping-table td { border: 1px solid var(--border); padding: 12px; text-align: left; }
+    .mapping-table th { background: #F9FAFB; font-weight: 600; }
+    .mapping-table td { vertical-align: top; }
+    
+    .confidence-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+    .conf-high { background: #D1FAE5; color: #065F46; }
+    .conf-mid { background: #FEF3C7; color: #92400E; }
+    .conf-low { background: #FEE2E2; color: #991B1B; }
+    .conf-none { background: #F3F4F6; color: #4B5563; }
+
+/* Conflict error highlighting */
+.mapping-error-row {
+  background: #FEE2E2; /* light red background */
+  border: 2px solid #EF4444; /* red border */
+}
+.mapping-error-select {
+  border-color: #EF4444 !important; /* red border for select */
+}
+
+/* Conflict error highlighting */
+.mapping-error-row {
+  background: #FEE2E2; /* light red background */
+  border: 2px solid #EF4444; /* red border */
+}
+.mapping-error-select {
+  border-color: #EF4444 !important; /* red border for select */
+}
+    .conf-prev { background: #DBEAFE; color: #1E40AF; }
+    
+    #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; color: var(--primary); z-index: 9999; }
+    
+    .join-settings { display: none; margin-top: 8px; padding: 8px; background: #F8FAFC; border: 1px dashed var(--border); border-radius: 6px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<div id="loading">処理中...</div>
+
+<div class="container">
+  <h1>路線便フォーマット統一アプリ</h1>
+  
+  <!-- Step 1: Upload / Select -->
+  <div id="step-1" class="step active card">
+    <h2>1. 取込方法の選択</h2>
+    
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <button id="tab-file" class="btn btn-primary" onclick="switchTab('file')" style="flex:1;">方法1：ファイルから取り込む<br><span style="font-size:0.8rem; font-weight:normal;">(CSV / XLSX)</span></button>
+      <button id="tab-sheet" class="btn btn-outline" onclick="switchTab('sheet')" style="flex:1;">方法2：既存シートから取り込む<br><span style="font-size:0.8rem; font-weight:normal;">(A社〜D社 原本貼付など)</span></button>
+    </div>
+
+    <!-- ファイルから取り込む -->
+    <div id="section-file">
+      <form id="uploadForm" onsubmit="event.preventDefault(); processFile();">
+        <div class="form-group">
+          <label>対象路線便会社 <span style="color:red">*</span></label>
+          <select id="companyCode_file" name="companyCode" class="form-control" required>
+            <option value="">選択してください</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ファイル (CSV / XLSX) <span style="color:red">*</span></label>
+          <input type="file" id="fileInput" name="file" class="form-control" accept=".csv, .xlsx, .xls" required>
+        </div>
+        <div style="text-align: right;">
+          <button type="submit" class="btn btn-primary">ファイル読み込み開始</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 既存シートから取り込む -->
+    <div id="section-sheet" style="display: none;">
+      <div class="form-group">
+        <label>対象路線便会社 <span style="color:red">*</span></label>
+        <select id="companyCode_sheet" class="form-control" required>
+          <option value="">選択してください</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>使用する既存シート <span style="color:red">*</span></label>
+        <select id="sel-existing-sheet" class="form-control" required>
+          <option value="">選択してください（データがあるシートのみ表示）</option>
+        </select>
+      </div>
+      <div style="text-align: right;">
+        <button class="btn btn-primary" onclick="processExistingSheet()">このシートを読み取る</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Step 2: Mapping -->
+  <div id="step-2" class="step card">
+    <h2>2. 項目マッピング確認</h2>
+    <div id="mapping-alert" style="padding: 12px; border-radius: 8px; margin-bottom: 16px; font-weight: 600;"></div>
+    
+    <div style="background: #F8FAFC; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+      <strong>【自動設定される項目】</strong><br>
+      標準化データID, 原本データID, 対象年月, 路線便会社コード, 路線便会社名, 有効フラグ, エラー有無<br>
+      <span style="font-size:0.9rem; color:#666;">※これらはシステムが自動で付与するため、以下の紐づけ作業は不要です。</span>
+    </div>
+    
+    <table class="mapping-table">
+      <thead>
+        <tr>
+          <th>元CSVの列名</th>
+          <th>サンプルデータ</th>
+          <th>共通項目に紐づけ</th>
+          <th>予測信頼度</th>
+        </tr>
+      </thead>
+      <tbody id="mapping-body"></tbody>
+    </table>
+    
+    <div class="form-group" style="margin-top: 20px;">
+      <label>このフォーマットを保存する名前（任意）</label>
+      <input type="text" id="formatName" class="form-control" placeholder="例: 福山通運_Web請求書フォーマット">
+    </div>
+    
+    <div class="form-group" style="margin-top: 20px; background: #F8FAFC; padding: 16px; border: 1px solid var(--border); border-radius: 8px;">
+      <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 1.1rem; color: var(--primary);">【契約・サーチャージ設定】</h3>
+      <div style="display:flex; gap: 20px;">
+        <div style="flex: 1;">
+          <label>契約プロファイル</label>
+          <select id="contractProfileSelect" class="form-control" onchange="onContractProfileChange()">
+            <option value="">-- 新規作成 または 未設定 --</option>
+          </select>
+          <div id="newContractProfileGroup" style="display:none; margin-top:8px;">
+            <input type="text" id="newContractProfileName" class="form-control" placeholder="契約プロファイル名（例：テスト契約／内包）" style="margin-bottom:8px;">
+            <input type="text" id="newContractIdentifier" class="form-control" placeholder="荷主・契約識別情報（システム内部用）">
+          </div>
+        </div>
+        <div style="flex: 1;">
+          <label>サーチャージ取扱区分</label>
+          <select id="surchargeHandling" class="form-control" onchange="onSurchargeHandlingChange()">
+            <option value="UNCONFIRMED">未設定／要確認</option>
+            <option value="NONE">なし</option>
+            <option value="INCLUDED">実績運賃に内包</option>
+            <option value="ADDED">標準化時に実績運賃へ加算</option>
+            <option value="DETAIL_SEPARATE">明細別料金</option>
+            <option value="PERIOD_SEPARATE">期間合計料金</option>
+          </select>
+          <div id="surchargeWarning" style="color:#B91C1C; font-size:0.9rem; margin-top:8px; display:none; font-weight:bold;">サーチャージの扱いが未設定です。</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-group" style="margin-top: 20px; background: #F8FAFC; padding: 16px; border: 1px solid var(--border); border-radius: 8px;">
+      <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 1.1rem; color: var(--primary);">【実績運賃の作り方】</h3>
+      <div>
+        <label style="font-weight: normal; margin-right: 20px;">
+          <input type="radio" name="calcMethod" id="calcMethod_direct" value="直接取得" checked onchange="checkMultiSelect()"> 元データの実績運賃をそのまま使う
+        </label>
+        <label style="font-weight: normal;">
+          <input type="radio" name="calcMethod" id="calcMethod_calc" value="計算" onchange="checkMultiSelect()"> 複数項目を計算して作る
+<div id="aggregateNotice" style="margin-top:8px; font-size:0.9rem; color:#555;"></div>
+        </label>
+      </div>
+      
+      <div id="calc-settings-area" style="display:none; margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border);">
+        <p style="margin-top: 0; font-size: 0.9rem; color: #666;">※マッピングで選択した「基本運賃」などの計算用項目に対して、加算（＋）か減算（－）かを指定してください。</p>
+        <div id="calc-items-list" style="margin-bottom: 12px;"></div>
+        
+        <div style="background: #E0E7FF; padding: 12px; border-radius: 6px;">
+          <strong style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: #3730A3;">【計算プレビュー】（サンプルデータ上位数件）</strong>
+          <div id="calc-preview-container" style="font-size: 0.9rem; color: #4338CA;">
+            計算中...
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="mapping-validation-warning" style="display:none; color:#B91C1C; background:#FEF2F2; padding:12px; border:1px solid #F87171; border-radius:6px; margin-bottom:16px;">
+    </div>
+    
+    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+      <button class="btn btn-outline" onclick="goToStep(1)">戻る</button>
+      <button id="btn-confirm-mapping" class="btn btn-primary" onclick="confirmMapping()">確定して標準化を実行</button>
+    </div>
+  </div>
+  
+  <!-- Step 3: Result -->
+  <div id="step-3" class="step card">
+    <h2>3. 処理完了</h2>
+    <p id="result-message" style="font-size: 1.1rem; font-weight: 600; white-space: pre-wrap;"></p>
+    
+    <div id="error-details-container" style="display:none; margin-top:16px; background:#F9FAFB; padding:12px; border:1px solid #E5E7EB; border-radius:6px;">
+      <h3 style="margin-top:0; font-size:1rem; color:#991B1B;">エラー詳細</h3>
+      <pre id="error-details-text" style="margin:0; font-size:0.9rem; white-space:pre-wrap; color:#374151; max-height:200px; overflow-y:auto;"></pre>
+    </div>
+    
+    <div style="margin-top: 2rem; text-align: center; display:flex; justify-content:center; gap:10px;">
+      <button class="btn btn-outline" onclick="goToStep(2)">マッピングを修正する</button>
+      <button class="btn btn-success" onclick="downloadCsv()">標準化CSVを出力 (UTF-8 BOM付)</button>
+    </div>
+    <div style="margin-top: 1rem; text-align: center;">
+      <button class="btn btn-outline" onclick="location.reload()">最初からやり直す</button>
+    </div>
+  </div>
+  
+</div>
+
+<script>
+  let serverData = {};
+  let currentSession = {};
+  let calcOperators = {}; // { originalIndex: '+' or '-' }
+  let lastCalcRule = null; // restore from previous mapping
+  
+  // 初期化
+  window.onload = function() {
+    showLoading();
+    google.script.run.withSuccessHandler(res => {
+      serverData = res;
+      const selFile = document.getElementById('companyCode_file');
+      const selSheet = document.getElementById('companyCode_sheet');
+      res.carriers.forEach(c => {
+        const opt1 = document.createElement('option'); opt1.value = c.code; opt1.textContent = c.name;
+        const opt2 = document.createElement('option'); opt2.value = c.code; opt2.textContent = c.name;
+        selFile.appendChild(opt1);
+        selSheet.appendChild(opt2);
+      });
+      
+      const selExisting = document.getElementById('sel-existing-sheet');
+      if (res.existingSheets && res.existingSheets.length > 0) {
+        res.existingSheets.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.sheetName;
+          opt.textContent = s.sheetName;
+          selExisting.appendChild(opt);
+        });
+      } else {
+        const opt = document.createElement('option');
+        opt.value = "";
+        opt.textContent = "※データが入っているシートがありません";
+        selExisting.appendChild(opt);
+      }
+      
+      hideLoading();
+    }).withFailureHandler(err => {
+      alert("初期データの取得に失敗しました: " + err.message);
+      hideLoading();
+    }).apiGetInitialData();
+  };
+  
+  function showLoading() { document.getElementById('loading').style.display = 'flex'; }
+  function hideLoading() { document.getElementById('loading').style.display = 'none'; }
+  
+  function switchTab(tab) {
+    if (tab === 'file') {
+      document.getElementById('tab-file').className = 'btn btn-primary';
+      document.getElementById('tab-sheet').className = 'btn btn-outline';
+      document.getElementById('section-file').style.display = 'block';
+      document.getElementById('section-sheet').style.display = 'none';
+    } else {
+      document.getElementById('tab-sheet').className = 'btn btn-primary';
+      document.getElementById('tab-file').className = 'btn btn-outline';
+      document.getElementById('section-sheet').style.display = 'block';
+      document.getElementById('section-file').style.display = 'none';
+    }
+  }
+
+  function goToStep(step) {
+    document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+    document.getElementById('step-' + step).classList.add('active');
+  }
+  
+  function processFile() {
+    showLoading();
+    const form = document.getElementById('uploadForm');
+    
+    google.script.run.withSuccessHandler(res => {
+      hideLoading();
+      if (!res.success) {
+        alert("エラー: " + res.message);
+        return;
+      }
+      
+      currentSession = res;
+      currentSession.companyCode = document.getElementById('companyCode_file').value;
+      
+      if (res.isExactMatch) {
+        alert("すべての項目が前回設定と完全に一致しました。\n確認の上、「確定して標準化を実行」を押してください。");
+      }
+      
+      if (res.calcMethod === "計算") {
+        document.getElementById('calcMethod_calc').checked = true;
+      } else {
+        document.getElementById('calcMethod_direct').checked = true;
+      }
+      
+      if (res.calcRule) {
+        try {
+          const ruleArr = JSON.parse(res.calcRule);
+          if (ruleArr.fields) {
+            ruleArr.fields.forEach(f => {
+               calcOperators[f.sourceIndex] = f.operator;
+            });
+          }
+        } catch(e) {}
+      }
+      
+      const cpSelect = document.getElementById('contractProfileSelect');
+      if (cpSelect) {
+        cpSelect.innerHTML = '<option value="">-- 新規作成 または 未設定 --</option>';
+        if (res.contractProfiles && res.contractProfiles.length > 0) {
+          res.contractProfiles.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name ? p.name : p.identifier;
+            opt.dataset.surcharge = p.surchargeHandling;
+            cpSelect.appendChild(opt);
+          });
+        }
+        if (res.defaultProfileId) {
+          cpSelect.value = res.defaultProfileId;
+        }
+        const sHandling = document.getElementById('surchargeHandling');
+        if (sHandling) sHandling.value = res.defaultSurchargeHandling || "UNCONFIRMED";
+      }
+      
+      renderMappingTable();
+      if (typeof onContractProfileChange === 'function') onContractProfileChange();
+      
+      goToStep(2);
+      
+    }).withFailureHandler(err => {
+      hideLoading();
+      alert("通信エラー: " + err.message);
+    }).apiProcessFile(form);
+  }
+
+  function processExistingSheet() {
+    const companyCode = document.getElementById('companyCode_sheet').value;
+    const sheetName = document.getElementById('sel-existing-sheet').value;
+    
+    if (!companyCode) { alert("対象路線便会社を選択してください。"); return; }
+    if (!sheetName) { alert("シートを選択してください。"); return; }
+    
+    showLoading();
+    google.script.run.withSuccessHandler(res => {
+      hideLoading();
+      if (!res.success) {
+        alert("エラー: " + res.message);
+        return;
+      }
+      
+      currentSession = res;
+      currentSession.companyCode = companyCode;
+      
+      if (res.isExactMatch) {
+        alert("すべての項目が前回設定と完全に一致しました。\n確認の上、「確定して標準化を実行」を押してください。");
+      }
+      
+      if (res.calcMethod === "計算") {
+        document.getElementById('calcMethod_calc').checked = true;
+      } else {
+        document.getElementById('calcMethod_direct').checked = true;
+      }
+      
+      if (res.calcRule) {
+        try {
+          const ruleArr = JSON.parse(res.calcRule);
+          if (ruleArr.fields) {
+            ruleArr.fields.forEach(f => {
+               calcOperators[f.sourceIndex] = f.operator;
+            });
+          }
+        } catch(e) {}
+      }
+      
+      const cpSelect = document.getElementById('contractProfileSelect');
+      if (cpSelect) {
+        cpSelect.innerHTML = '<option value="">-- 新規作成 または 未設定 --</option>';
+        if (res.contractProfiles && res.contractProfiles.length > 0) {
+          res.contractProfiles.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name ? p.name : p.identifier;
+            opt.dataset.surcharge = p.surchargeHandling;
+            cpSelect.appendChild(opt);
+          });
+        }
+        if (res.defaultProfileId) {
+          cpSelect.value = res.defaultProfileId;
+        }
+        const sHandling = document.getElementById('surchargeHandling');
+        if (sHandling) sHandling.value = res.defaultSurchargeHandling || "UNCONFIRMED";
+      }
+      
+      renderMappingTable();
+      if (typeof onContractProfileChange === 'function') onContractProfileChange();
+      
+      goToStep(2);
+      
+    }).withFailureHandler(err => {
+      hideLoading();
+      alert("通信エラー: " + err.message);
+    }).apiProcessExistingSheet(sheetName, companyCode);
+  }
+  
+  function getBadgeHtml(confidence) {
+    if (confidence === "前回確定") return '<span class="confidence-badge conf-prev">前回確定</span>';
+    if (confidence === "高") return '<span class="confidence-badge conf-high">高</span>';
+    if (confidence === "中") return '<span class="confidence-badge conf-mid">中</span>';
+    if (confidence === "低") return '<span class="confidence-badge conf-low">低</span>';
+    return '<span class="confidence-badge conf-none">未設定</span>';
+  }
+  
+  function onContractProfileChange() {
+    const sel = document.getElementById('contractProfileSelect');
+    const group = document.getElementById('newContractProfileGroup');
+    if (sel.value === "") {
+       if (group) group.style.display = "block";
+    } else {
+       if (group) group.style.display = "none";
+       const opt = sel.options[sel.selectedIndex];
+       const surcharge = opt.dataset.surcharge;
+       if (surcharge) {
+         document.getElementById('surchargeHandling').value = surcharge;
+       }
+    }
+    checkMultiSelect();
+  }
+
+  function onSurchargeHandlingChange() {
+    checkMultiSelect();
+  }
+  
+  function renderMappingTable() {
+    const tbody = document.getElementById('mapping-body');
+    tbody.innerHTML = "";
+    
+    const alertBox = document.getElementById('mapping-alert');
+    if (currentSession.isExactMatch) {
+      alertBox.textContent = "すべて前回設定です。";
+      alertBox.style.background = "#D1FAE5"; alertBox.style.color = "#065F46";
+    } else {
+      alertBox.textContent = "以前のフォーマットと似ていますが変更があります。赤枠の項目などを確認してください。";
+      alertBox.style.background = "#FEF2F2"; alertBox.style.color = "#991B1B";
+    }
+    
+    let optionsHtml = '<option value="使用しない">-- 使用しない --</option>';
+    serverData.commonFields.forEach(f => {
+      if (f !== "使用しない") {
+        const isReq = serverData.requiredFields.includes(f) ? " *" : "";
+        optionsHtml += `<option value="${f}">${f}${isReq}</option>`;
+      }
+    });
+    
+    currentSession.predictions.forEach((pred, idx) => {
+      const sample = currentSession.sampleData && currentSession.sampleData[0] ? currentSession.sampleData[0][idx] : "";
+      const isWarn = pred.confidence === "未設定" || pred.confidence === "低";
+      const trStyle = isWarn ? 'style="background-color: #FEF2F2;"' : '';
+      
+      const tr = document.createElement('tr');
+      tr.id = `tr_${idx}`;
+      if (isWarn) tr.style.backgroundColor = "#FFF5F5";
+      
+      tr.innerHTML = `
+        <td><strong>${pred.originalName}</strong></td>
+        <td style="color:#666; font-size:0.9rem;">${sample || ""}</td>
+        <td>
+          <select id="map_${idx}" class="form-control" onchange="checkMultiSelect()">
+            ${optionsHtml}
+          </select>
+          <div class="join-settings" id="join_${idx}">
+            <label style="font-size:0.8rem;">複数列が同じ項目に設定されています。結合順と結合方法を指定してください。</label>
+            <div style="display:flex; gap:10px; margin-top:4px;">
+              <input type="number" id="joinOrder_${idx}" value="${idx+1}" style="width:60px;" title="結合順序">
+              <select id="joinMethod_${idx}">
+                <option value="区切りなし">区切りなし</option>
+                <option value="半角スペース" selected>半角スペース</option>
+                <option value="全角スペース">全角スペース</option>
+              </select>
+            </div>
+          </div>
+        </td>
+        <td>${getBadgeHtml(pred.confidence)}<br><span style="font-size:0.75rem; color:#888;">${pred.source}</span></td>
+      `;
+      tbody.appendChild(tr);
+      
+      const sel = document.getElementById(`map_${idx}`);
+      sel.value = pred.commonField;
+    });
+    
+    checkMultiSelect();
+  }
+  
+  function checkMultiSelect() {
+    const counts = {};
+    if (!currentSession || !currentSession.predictions) return;
+    
+    currentSession.predictions.forEach((_, idx) => {
+      const el = document.getElementById(`map_${idx}`);
+      if (!el) return;
+      const val = el.value;
+      if (val !== "使用しない") {
+        counts[val] = (counts[val] || 0) + 1;
+      }
+    });
+    
+    const SINGLE_VALUE_FIELDS = ["出荷日", "個数", "重量", "サイズ", "送り状No", "管理番号"];
+    
+    const calcMethod = document.getElementById('calcMethod_direct').checked ? "直接取得" : "計算";
+    const calcSettingsArea = document.getElementById('calc-settings-area');
+    
+    if (calcMethod === "計算") {
+      calcSettingsArea.style.display = "block";
+      renderCalcItems();
+      // Show aggregate notice
+      const noticeDiv = document.getElementById('aggregateNotice');
+      if (noticeDiv) {
+        noticeDiv.innerHTML = '<p class="ui-notice">合算計算を使用します。実績運賃への直接マッピングは使用されません。</p>';
+      }
+    } else {
+      calcSettingsArea.style.display = "none";
+      // Clear notice when not in calculation mode
+      const noticeDiv = document.getElementById('aggregateNotice');
+      if (noticeDiv) {
+        noticeDiv.innerHTML = '';
+      }
+    }
+    
+    let hasConflict = false;
+    let conflictMsgs = [];
+    
+    currentSession.predictions.forEach((_, idx) => {
+      const el = document.getElementById(`map_${idx}`);
+      if (!el) return;
+      const val = el.value;
+      const joinDiv = document.getElementById(`join_${idx}`);
+      const tr = document.getElementById(`tr_${idx}`);
+      
+      if (tr) {
+         tr.style.border = "";
+         const isWarn = currentSession.predictions[idx].confidence === "未設定" || currentSession.predictions[idx].confidence === "低";
+         tr.style.backgroundColor = isWarn ? "#FFF5F5" : "";
+      }
+      
+      // 実績運賃の扱いは方式によって分けるため、ここでは一旦無視
+      if (val !== "使用しない" && val !== "実績運賃" && counts[val] > 1) {
+        if (!SINGLE_VALUE_FIELDS.includes(val)) {
+          joinDiv.style.display = "block";
+        } else {
+          joinDiv.style.display = "none";
+          if (tr) {
+             tr.style.border = "2px solid red";
+             tr.style.backgroundColor = "#FEF2F2";
+          }
+        }
+      } else {
+        joinDiv.style.display = "none";
+      }
+    });
+    
+    for (const f of SINGLE_VALUE_FIELDS) {
+      if (counts[f] > 1) {
+        hasConflict = true;
+        conflictMsgs.push(`・${f}：${counts[f]}項目選択されています（1つに絞ってください）`);
+      }
+    }
+    
+    if (calcMethod === "直接取得") {
+      if (counts["実績運賃"] > 1) {
+        hasConflict = true;
+        conflictMsgs.push("・実績運賃：複数選択されています（1つに絞ってください）");
+        currentSession.predictions.forEach((_, idx) => {
+          if (document.getElementById(`map_${idx}`).value === "実績運賃") {
+             const tr = document.getElementById(`tr_${idx}`);
+             if (tr) { tr.style.border = "2px solid red"; tr.style.backgroundColor = "#FEF2F2"; }
+          }
+        });
+      }
+    // Skip duplicate check for 実績運賃 in calculation mode (calcMethod === "計算")
+      
+      const calcRoles = ["基本運賃", "中継料", "燃料サーチャージ", "その他加算料金", "値引額", "その他運賃関連項目"];
+      let hasCalcRole = false;
+      calcRoles.forEach(r => { if (counts[r] > 0) hasCalcRole = true; });
+      if (!hasCalcRole) {
+        hasConflict = true;
+        conflictMsgs.push("・計算方式が選ばれていますが、計算用項目（基本運賃など）が1つも選択されていません");
+      }
+    }
+    
+    // サーチャージの扱い未設定チェック
+    const handlingEl = document.getElementById('surchargeHandling');
+    const surchargeWarning = document.getElementById('surchargeWarning');
+    if (!handlingEl || !surchargeWarning) return;
+    
+    const surchargeHandling = handlingEl.value;
+    const hasSurchargeItem = counts["燃料サーチャージ"] > 0 || counts["その他加算料金"] > 0;
+    
+    if (hasSurchargeItem && surchargeHandling === "UNCONFIRMED") {
+      surchargeWarning.style.display = "block";
+      surchargeWarning.textContent = "サーチャージ関連の項目がありますが、扱いが「未設定」です。";
+      hasConflict = true;
+      conflictMsgs.push("・サーチャージの扱いが未設定です");
+    } else if (surchargeHandling === "UNCONFIRMED") {
+      surchargeWarning.style.display = "block";
+      surchargeWarning.textContent = "サーチャージの扱いが未設定です。";
+      hasConflict = true;
+      conflictMsgs.push("・サーチャージの扱いが未設定です");
+    } else {
+      surchargeWarning.style.display = "none";
+    }
+    
+    const btn = document.getElementById('btn-confirm-mapping');
+    const warningDiv = document.getElementById('mapping-validation-warning');
+    if (hasConflict) {
+       btn.disabled = true;
+       warningDiv.style.display = "block";
+       warningDiv.innerHTML = `<strong>標準化を開始できません。修正が必要：</strong><br>` + conflictMsgs.join("<br>");
+    } else {
+       btn.disabled = false;
+       warningDiv.style.display = "none";
+    }
+  }
+  
+  function confirmMapping() {
+    const finalMapping = [];
+    const usedFields = new Set();
+    const counts = {};
+    const SINGLE_VALUE_FIELDS = ["出荷日", "個数", "重量", "サイズ", "実績運賃", "送り状No", "管理番号"];
+    
+    const calcMethod = document.getElementById('calcMethod_direct').checked ? "直接取得" : "計算";
+    
+    currentSession.predictions.forEach((pred, idx) => {
+      const commonField = document.getElementById(`map_${idx}`).value;
+      if (commonField !== "使用しない" && commonField !== "") {
+         counts[commonField] = (counts[commonField] || 0) + 1;
+      }
+    });
+
+    // Clear previous conflict highlights
+document.querySelectorAll('.mapping-error-row').forEach(el => el.classList.remove('mapping-error-row'));
+document.querySelectorAll('.mapping-error-select').forEach(el => el.classList.remove('mapping-error-select'));
+
+let hasConflict = false;
+let firstConflictElement = null;
+
+for (const f of SINGLE_VALUE_FIELDS) {
+  if (counts[f] > 1) {
+    if (f === "実績運賃" && calcMethod === "計算") {
+      continue;
+    }
+    hasConflict = true;
+    currentSession.predictions.forEach((pred, idx) => {
+      const commonField = document.getElementById(`map_${idx}`).value;
+      const tr = document.getElementById(`tr_${idx}`);
+      if (commonField === f) {
+        if (tr) tr.classList.add('mapping-error-row');
+        const select = document.getElementById(`map_${idx}`);
+        if (select) select.classList.add('mapping-error-select');
+        if (!firstConflictElement && tr) firstConflictElement = tr;
+      }
+    });
+  }
+}
+    
+    if (hasConflict) {
+      alert("単一値項目に複数の元項目が設定されています。赤枠の箇所を修正してください。");
+      if (firstConflictElement) firstConflictElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    
+    currentSession.predictions.forEach((pred, idx) => {
+      const commonField = document.getElementById(`map_${idx}`).value;
+      let joinOrder = 1;
+      let joinMethod = "区切りなし";
+      let joinGroupId = "";
+      
+      if (commonField !== "使用しない") {
+        const joinDiv = document.getElementById(`join_${idx}`);
+        if (joinDiv.style.display === "block") {
+          joinOrder = parseInt(document.getElementById(`joinOrder_${idx}`).value) || 1;
+          joinMethod = document.getElementById(`joinMethod_${idx}`).value;
+        } else {
+          // 単一値項目または1つの場合でも、前回の設定があれば引き継ぐ（変更可能）
+          joinOrder = pred.joinOrder || 1;
+          joinMethod = pred.joinMethod || "区切りなし";
+          joinGroupId = pred.joinGroupId || "";
+        }
+      }
+      
+      usedFields.add(commonField);
+      
+      finalMapping.push({
+        originalName: pred.originalName,
+        originalIndex: idx,
+        commonField: commonField,
+        joinOrder: joinOrder,
+        joinMethod: joinMethod,
+        joinGroupId: joinGroupId
+      });
+    });
+    
+    // 必須チェック（実績運賃は直接取得の場合のみ必須）
+    const requiredFields = [...serverData.requiredFields];
+    const calcMethod = document.getElementById('calcMethod_direct').checked ? "直接取得" : "計算";
+    
+    let missing = [];
+    if (calcMethod === "直接取得") {
+      missing = requiredFields.filter(f => !usedFields.has(f));
+    } else {
+      missing = requiredFields.filter(f => f !== "実績運賃" && !usedFields.has(f));
+    }
+    
+    if (missing.length > 0) {
+      alert("未設定の必須項目があります：\n" + missing.join(", "));
+      return;
+    }
+    
+    const calcRule = [];
+    if (calcMethod === "計算") {
+      const calcRoles = ["基本運賃", "中継料", "燃料サーチャージ", "その他加算料金", "値引額", "その他運賃関連項目"];
+      currentSession.predictions.forEach((pred, idx) => {
+        const val = document.getElementById(`map_${idx}`).value;
+        if (calcRoles.includes(val)) {
+           calcRule.push({
+             sourceName: pred.originalName,
+             sourceIndex: idx,
+             role: val,
+             operator: calcOperators[idx] || "+"
+           });
+        }
+      });
+    }
+    
+    const surchargeHandling = document.getElementById('surchargeHandling').value;
+    const hasSurchargeItem = counts["燃料サーチャージ"] > 0 || counts["その他加算料金"] > 0;
+    
+    if (hasSurchargeItem && surchargeHandling === "UNCONFIRMED") {
+      alert("サーチャージの扱いを設定してください。");
+      return;
+    }
+    
+    const payload = {
+      companyCode: currentSession.companyCode,
+      fileName: currentSession.fileName,
+      formatSignature: currentSession.formatSignature,
+      formatName: document.getElementById('formatName').value || currentSession.fileName,
+      mapping: finalMapping,
+      calcMethod: calcMethod,
+      calcRule: JSON.stringify({ type: "calc", fields: calcRule }),
+      rawData: currentSession.rawData,
+      contractProfileId: document.getElementById('contractProfileSelect').value,
+      contractProfileName: document.getElementById('newContractProfileName') ? document.getElementById('newContractProfileName').value : "",
+      contractIdentifier: document.getElementById('newContractIdentifier') ? document.getElementById('newContractIdentifier').value : "",
+      surchargeHandling: document.getElementById('surchargeHandling').value
+    };
+    
+    showLoading();
+    google.script.run.withSuccessHandler(res => {
+      hideLoading();
+      if (!res.success) {
+        alert("標準化処理に失敗しました:\n" + res.message);
+        return;
+      }
+      document.getElementById('result-message').textContent = res.message;
+      
+      const errDetailsContainer = document.getElementById('error-details-container');
+      const errDetailsText = document.getElementById('error-details-text');
+      if (res.errorDetails && res.errorDetails.length > 0) {
+        errDetailsContainer.style.display = "block";
+        errDetailsText.textContent = res.errorDetails.map((e, i) => `${i+1}.\n${e}`).join('\n\n');
+      } else {
+        errDetailsContainer.style.display = "none";
+        errDetailsText.textContent = "";
+      }
+      
+      goToStep(3);
+    }).withFailureHandler(err => {
+      hideLoading();
+      alert("通信エラー: " + err.message);
+    }).apiSaveMappingAndStandardize(payload);
+  }
+  
+  function downloadCsv() {
+    showLoading();
+    google.script.run.withSuccessHandler(res => {
+      hideLoading();
+      try {
+        const byteCharacters = atob(res.contentBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: "text/csv;charset=utf-8;" });
+        
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", res.filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        alert("標準化CSVを作成しました。");
+      } catch (e) {
+        alert("CSV出力に失敗しました。\n原因: " + e.message);
+      }
+    }).withFailureHandler(err => {
+      hideLoading();
+      alert("CSV出力に失敗しました。\n原因: " + err.message);
+    }).apiGenerateCsv(currentSession.companyCode, ""); 
+  }
+  
+  function renderCalcItems() {
+    const calcRoles = ["基本運賃", "中継料", "燃料サーチャージ", "その他加算料金", "値引額", "その他運賃関連項目"];
+    const listDiv = document.getElementById('calc-items-list');
+    
+    const calcFields = [];
+    currentSession.predictions.forEach((_, idx) => {
+      const val = document.getElementById(`map_${idx}`).value;
+      if (calcRoles.includes(val)) {
+        calcFields.push({ idx: idx, role: val, name: currentSession.predictions[idx].originalName });
+      }
+    });
+    
+    listDiv.innerHTML = '';
+    if (calcFields.length === 0) {
+      listDiv.innerHTML = '<span style="font-size:0.9rem; color:#991B1B;">計算用項目が1つもマッピングされていません。</span>';
+    } else {
+      calcFields.forEach(f => {
+        if (!calcOperators[f.idx]) {
+          calcOperators[f.idx] = (f.role === "値引額") ? "-" : "+";
+        }
+        const op = calcOperators[f.idx];
+        
+        const div = document.createElement('div');
+        div.style.marginBottom = "6px";
+        div.innerHTML = `
+          <select onchange="updateCalcOperator(${f.idx}, this.value)" style="margin-right:8px; padding:2px;">
+            <option value="+" ${op === "+" ? "selected" : ""}>＋ (加算)</option>
+            <option value="-" ${op === "-" ? "selected" : ""}>－ (減算)</option>
+          </select>
+          <strong>${f.name}</strong> <span style="font-size:0.85rem; color:#666;">(${f.role})</span>
+        `;
+        listDiv.appendChild(div);
+      });
+    }
+    updatePreview();
+  }
+  
+  function updateCalcOperator(idx, val) {
+    calcOperators[idx] = val;
+    updatePreview();
+  }
+  
+  function updatePreview() {
+    const calcRoles = ["基本運賃", "中継料", "燃料サーチャージ", "その他加算料金", "値引額", "その他運賃関連項目"];
+    const rule = [];
+    currentSession.predictions.forEach((pred, idx) => {
+      const val = document.getElementById(`map_${idx}`).value;
+      if (calcRoles.includes(val)) {
+         rule.push({
+           sourceName: pred.originalName,
+           sourceIndex: idx,
+           role: val,
+           operator: calcOperators[idx] || "+"
+         });
+      }
+    });
+    
+    const sampleRows = currentSession.sampleData || [];
+    
+    document.getElementById('calc-preview-container').innerHTML = "計算中...";
+    
+    google.script.run.withSuccessHandler(results => {
+      let html = "";
+      results.forEach((res, i) => {
+        // テストデータの場合は「TEST-XX」を取り出す（0列目）
+        const rowId = (sampleRows[i] && sampleRows[i][0] && String(sampleRows[i][0]).startsWith("TEST-")) 
+                       ? sampleRows[i][0] : `行${i+1}`;
+        html += `<div style="margin-bottom: 6px;"><strong>${rowId}:</strong> <span style="font-size: 1.05rem; font-weight: bold; color: #312E81;">${res.resultText}</span> <span style="font-size:0.8rem; color:#666;">(式: ${res.formulaText})</span></div>`;
+      });
+      document.getElementById('calc-preview-container').innerHTML = html || "プレビューデータがありません";
+    }).withFailureHandler(err => {
+      document.getElementById('calc-preview-container').innerHTML = "計算プレビューの取得に失敗しました。";
+    }).apiPreviewCalcFreight(sampleRows, rule);
+  }
+</script>
+</body>
+</html>

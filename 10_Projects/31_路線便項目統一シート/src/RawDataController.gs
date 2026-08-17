@@ -1,0 +1,668 @@
+/**
+ * データの標準化、およびマッピングの保存を行うコントローラ
+ */
+class RawDataController {
+  
+  /**
+   * マッピング情報を保存し、データを固定22列の標準化フォーマットへ変換して保存します。
+   * @param {object} payload { companyCode, fileName, formatSignature, formatName, mapping, calcMethod, calcRule, rawData }
+   */
+  static processStandardization(payload) {
+    const { companyCode, fileName, formatSignature, formatName, mapping, calcMethod, calcRule, rawData, contractProfileId, contractProfileName, contractIdentifier, surchargeHandling } = payload;
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const now = new Date();
+    const tz = ss.getSpreadsheetTimeZone();
+    const ts = Utilities.formatDate(now, tz, "yyyy/MM/dd HH:mm:ss");
+    
+    // 取込ID (1回の取込処理全体で共通)
+    const importId = IdService.generateId(CONFIG.ID_PREFIX[CONFIG.SHEET_NAMES.IMPORT_HISTORY] || "IMP");
+
+
+    // 1. 会社名の取得
+    const carrierSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CARRIER);
+    let companyName = "不明";
+    if (carrierSheet) {
+      const cData = carrierSheet.getDataRange().getValues();
+      for (let i = 1; i < cData.length; i++) {
+        if (cData[i][1] === companyCode) {
+          companyName = cData[i][2];
+          break;
+        }
+      }
+    }
+
+    // 10_取込履歴への親レコード作成
+    const historySheet = ss.getSheetByName(CONFIG.SHEET_NAMES.HISTORY);
+    let historyRowIdx = -1;
+    let historyHeaders = [];
+    if (historySheet) {
+      historyHeaders = historySheet.getRange(1, 1, 1, Math.max(1, historySheet.getLastColumn())).getValues()[0];
+      const hRow = new Array(historyHeaders.length).fill("");
+      
+      const setHVal = (colName, val) => {
+        const idx = historyHeaders.indexOf(colName);
+        if (idx !== -1) hRow[idx] = val;
+      };
+      
+      setHVal("取込ID", importId);
+      setHVal("取込日時", ts);
+      setHVal("路線便会社コード", companyCode);
+      setHVal("路線便会社名", companyName);
+      setHVal("元ファイル名", fileName || "");
+      setHVal("ファイル名", fileName || "");
+      setHVal("取込対象", "出荷明細");
+      setHVal("読込予定件数", rawData && rawData.length ? rawData.length - 1 : 0);
+      setHVal("処理状態", "処理中");
+      setHVal("現在の処理工程", "標準化処理");
+      setHVal("開始日時", ts);
+      setHVal("フォーマット名", formatName || "");
+      
+      const metaObj = {
+        formatSignature: formatSignature || "",
+        contractProfileId: contractProfileId || "",
+        contractProfileName: contractProfileName || contractIdentifier || "",
+        surchargeHandling: surchargeHandling || "UNCONFIRMED"
+      };
+      setHVal("備考", JSON.stringify(metaObj));
+      
+      historySheet.appendRow(hRow);
+      historyRowIdx = historySheet.getLastRow();
+    }
+    
+    try {
+    // 2. フォーマットIDの特定
+    const formatSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.FORMAT_SETTING);
+    const roleSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.ROLE_MASTER);
+    
+    let formatId = "";
+    let formatRowIndex = -1;
+    if (formatSheet) {
+      const fData = formatSheet.getDataRange().getValues();
+      for (let i = 1; i < fData.length; i++) {
+        if (fData[i][1] === companyCode && fData[i][6] === formatSignature) {
+          formatId = fData[i][0];
+          formatRowIndex = i + 1;
+          break;
+        }
+      }
+    }
+    if (!formatId) {
+      formatId = IdService.generateId("FMT");
+    }
+
+    // 3. マッピングの単一値項目チェック
+    const SINGLE_VALUE_FIELDS = ["出荷日", "個数", "重量", "サイズ", "実績運賃", "管理番号"];
+    const counts = {};
+    mapping.forEach(m => {
+      if (m.commonField !== "使用しない" && m.commonField !== "") {
+        counts[m.commonField] = (counts[m.commonField] || 0) + 1;
+      }
+    });
+    for (const f of SINGLE_VALUE_FIELDS) {
+      if (counts[f] > 1) {
+        if (f === "実績運賃" && calcMethod === "計算") {
+          continue;
+        }
+        throw new Error(`${f}に複数の元項目が設定されています。システムでは結合が許可されていません。`);
+      }
+    }
+    
+    // 3.5 サーチャージ項目の未設定チェック
+    const hasSurchargeItem = (counts["燃料サーチャージ"] > 0 || counts["その他加算料金"] > 0);
+    if (hasSurchargeItem && surchargeHandling === "UNCONFIRMED") {
+      throw new Error("サーチャージの扱いが未設定です。");
+    }
+
+    // 4. マッピングの保存とmappingIdの生成
+    if (roleSheet) {
+      const rData = roleSheet.getDataRange().getValues();
+      const newRoleRows = [rData[0]]; // ヘッダー
+      
+      // 今回のフォーマットID以外の既存マッピングを残す
+      for (let i = 1; i < rData.length; i++) {
+        if (rData[i][1] !== formatId) {
+          newRoleRows.push(rData[i]);
+        }
+      }
+      
+      // 今回確定したマッピングを追加
+      mapping.forEach(m => {
+        m.mappingId = IdService.generateId("RLM");
+        newRoleRows.push([
+          m.mappingId, formatId, companyCode, m.originalName, m.originalIndex + 1, m.commonField, "UI手動確定", "確定済み", "確定済み",
+          m.joinGroupId || "", m.joinOrder || 1, m.joinMethod || "区切りなし", ts, ts, ""
+        ]);
+      });
+      
+      roleSheet.clearContents();
+      const finalRoleRows = newRoleRows.map(row => {
+        const newRow = new Array(15).fill("");
+        for (let i = 0; i < 15; i++) {
+          newRow[i] = row[i] !== undefined ? row[i] : "";
+        }
+        return newRow;
+      });
+      roleSheet.getRange(1, 1, finalRoleRows.length, 15).setValues(finalRoleRows);
+    }
+    
+    // 5. 計算ルールへのmappingId注入
+    let finalCalcRuleStr = calcRule || "";
+    if (calcMethod === "計算" && calcRule) {
+      try {
+        const ruleObj = JSON.parse(calcRule);
+        if (ruleObj.type === "calc" && ruleObj.fields) {
+          ruleObj.fields.forEach(f => {
+             const match = mapping.find(m => m.originalIndex === f.sourceIndex);
+             if (match) {
+               f.mappingId = match.mappingId;
+             }
+          });
+          finalCalcRuleStr = JSON.stringify(ruleObj);
+        }
+      } catch(e) {}
+    }
+    
+    // 6. フォーマット設定の保存
+    if (formatSheet) {
+      if (formatRowIndex > -1) {
+        formatSheet.getRange(formatRowIndex, 9).setValue(ts); // 最終使用日更新
+        formatSheet.getRange(formatRowIndex, 11).setValue(calcMethod || "直接取得");
+        formatSheet.getRange(formatRowIndex, 12).setValue(finalCalcRuleStr);
+      } else {
+        const headersStr = rawData[0].join(",");
+        formatSheet.appendRow([
+          formatId, companyCode, companyName, formatName || fileName, 1, headersStr, formatSignature, ts, ts, true, calcMethod || "直接取得", finalCalcRuleStr
+        ]);
+      }
+    }
+    
+    // 6.2 契約プロファイルの再照合
+    const profileSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CONTRACT_PROFILE);
+    if (contractProfileId && profileSheet) {
+      const pData = profileSheet.getDataRange().getValues();
+      let matched = false;
+      let masterHandling = "";
+      for (let i = 1; i < pData.length; i++) {
+        if (pData[i][0] === contractProfileId && pData[i][8] === true) {
+          matched = true;
+          masterHandling = pData[i][6];
+          break;
+        }
+      }
+      if (matched && masterHandling !== surchargeHandling) {
+        throw new Error("契約プロファイルのサーチャージ設定と今回の設定が一致しません。\n契約設定を確認してください。");
+      }
+    }
+    
+    // 6.5 契約プロファイル設定の保存
+    if (profileSheet) {
+      if (contractProfileId) {
+        // 既存更新（最終使用日時と取扱区分を更新）
+        const pData = profileSheet.getDataRange().getValues();
+        for (let i = 1; i < pData.length; i++) {
+          if (pData[i][0] === contractProfileId) {
+            profileSheet.getRange(i + 1, 7).setValue(surchargeHandling || "UNCONFIRMED"); // 取扱区分
+            profileSheet.getRange(i + 1, 8).setValue(ts); // 最終使用日時
+            break;
+          }
+        }
+      } else if (contractIdentifier || contractProfileName) {
+        // 新規作成
+        // ["契約プロファイルID(0)", "契約プロファイル名(1)", "路線便会社コード(2)", "路線便会社名(3)", "フォーマットID(4)", "荷主・契約識別情報(5)", "サーチャージ取扱区分(6)", "最終使用日時(7)", "有効フラグ(8)", "備考(9)"]
+        const newProfileId = IdService.generateId(CONFIG.ID_PREFIX[CONFIG.SHEET_NAMES.CONTRACT_PROFILE] || "CPF");
+        profileSheet.appendRow([
+          newProfileId, contractProfileName || contractIdentifier, companyCode, companyName, formatId, contractIdentifier, surchargeHandling || "UNCONFIRMED", ts, true, ""
+        ]);
+      }
+    }
+    
+    // 7. 標準化データの生成とSSoT保存
+    const standardizedRows = [];
+    const ssotRows = [];
+    const errorDetails = [];
+    
+    // 元データのヘッダー行（推奨方式Aの headers用）
+    const rawHeaders = rawData[0] || [];
+    
+    for (let i = 1; i < rawData.length; i++) {
+      const row = rawData[i];
+      if (!row || row.join("").trim() === "") continue;
+
+      const fixedHeaders = CONFIG.STANDARDIZED_CSV_HEADERS;
+      const stdId = IdService.generateId("STD");
+      const rawId = IdService.generateId("RAW");
+      
+      // SSoT用JSONの構築 (推奨方式A: headersとvaluesの配列で完全保持、Date型も文字列化)
+      const rawValues = row.map(val => {
+        if (val === null || val === undefined) return "";
+        if (val instanceof Date) return Utilities.formatDate(val, tz, "yyyy-MM-dd");
+        return String(val);
+      });
+      const rawDataJson = JSON.stringify({
+        headers: rawHeaders.map(h => String(h || "")),
+        values: rawValues
+      });
+      
+      const stdResult = RawDataController._standardizeSingleRow(
+        row,
+        rawId,
+        stdId,
+        companyCode,
+        companyName,
+        mapping,
+        calcMethod,
+        finalCalcRuleStr,
+        surchargeHandling,
+        tz,
+        fixedHeaders
+      );
+      
+      const stdRow = stdResult.stdRow;
+      const hasError = stdResult.hasError;
+      const errorMsgs = stdResult.errorMsgs;
+      
+      if (hasError) {
+         errorDetails.push(`原本データID：${rawId}\n原因：${errorMsgs.join(", ")}`);
+      }
+      
+      standardizedRows.push(stdRow);
+      
+      // 15_取込一時データ (取込原本SSoT) 用の配列構築
+      // "15_取込一時データ": ["原本データID(0)", "取込ID(1)", "路線便会社コード(2)", "路線便会社名(3)", "取込対象(4)", "元ファイル名(5)", "元シート名(6)", "元行番号(7)", "元データJSON(8)", "変換後データJSON(9)", "変換状況(10)", "エラー内容(11)", "確認状況(12)", "登録対象(13)", "取込日時(14)", "取込フォーマットID(15)", "契約プロファイルID(16)", "契約プロファイル名(17)", "サーチャージ取扱区分(18)", "有効フラグ(19)", "備考(20)"]
+      const ssotRow = new Array(21).fill("");
+      ssotRow[0] = rawId;
+      ssotRow[1] = importId;
+      ssotRow[2] = companyCode;
+      ssotRow[3] = companyName;
+      ssotRow[4] = "出荷明細"; // デフォルト
+      ssotRow[5] = fileName;
+      ssotRow[6] = ""; // シート名はここで取得できないため空
+      ssotRow[7] = i + 1; // 元行番号
+      ssotRow[8] = rawDataJson;
+      ssotRow[9] = JSON.stringify(stdRow); // 将来監査用
+      ssotRow[10] = hasError ? "エラー" : "正常";
+      ssotRow[11] = errorMsgs.join(", ");
+      ssotRow[12] = hasError ? "要確認" : "確認済み";
+      ssotRow[13] = !hasError;
+      ssotRow[14] = ts;
+      ssotRow[15] = formatId;
+      ssotRow[16] = contractProfileId || "";
+      ssotRow[17] = contractProfileName || contractIdentifier || "";
+      ssotRow[18] = surchargeHandling || "UNCONFIRMED";
+      ssotRow[19] = !hasError;
+      ssotRow[20] = "";
+      ssotRows.push(ssotRow);
+    }
+    
+    // 6. 23_標準化出荷データへ保存および重複判定
+    const analysisSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.ANALYSIS_DATA);
+    let newCount = 0;
+    let duplicateCount = 0;
+    let errorCount = 0;
+    const finalRowsToSave = [];
+    
+    if (analysisSheet) {
+      const existingData = analysisSheet.getDataRange().getValues();
+      const existingSet = new Set();
+      
+      for (let i = 1; i < existingData.length; i++) {
+        const row = existingData[i];
+        // ID(0, 1列目)とシステム生成日時等以外を結合してユニーク判定
+        const key = String(row[3]) + "|" + String(row[4]) + "|" + String(row[9]) + "|" + String(row[15]) + "|" + String(row[16]) + "|" + String(row[17]); 
+        existingSet.add(key);
+      }
+      
+      standardizedRows.forEach(stdRow => {
+        const fixedHeaders = CONFIG.STANDARDIZED_CSV_HEADERS;
+        if (stdRow[fixedHeaders.indexOf("エラー有無")] === true) {
+          errorCount++;
+        }
+        const key = String(stdRow[3]) + "|" + String(stdRow[4]) + "|" + String(stdRow[9]) + "|" + String(stdRow[15]) + "|" + String(stdRow[16]) + "|" + String(stdRow[17]);
+        if (existingSet.has(key)) {
+          duplicateCount++;
+        } else {
+          finalRowsToSave.push(stdRow);
+          existingSet.add(key);
+          newCount++;
+        }
+      });
+      
+      if (finalRowsToSave.length > 0) {
+        const fixedHeaders = CONFIG.STANDARDIZED_CSV_HEADERS;
+        analysisSheet.getRange(analysisSheet.getLastRow() + 1, 1, finalRowsToSave.length, fixedHeaders.length).setValues(finalRowsToSave);
+      }
+    }
+    
+    // 6.5 取込原本SSoT(15_取込一時データ)への保存
+    const ssotSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.TEMP_DATA);
+    if (ssotSheet && ssotRows.length > 0) {
+      ssotSheet.getRange(ssotSheet.getLastRow() + 1, 1, ssotRows.length, 21).setValues(ssotRows);
+    }
+    
+    // 10_取込履歴の更新 (完了)
+    if (historySheet && historyRowIdx > 0) {
+      const endTs = Utilities.formatDate(new Date(), tz, "yyyy/MM/dd HH:mm:ss");
+      const updates = {
+        "処理状態": "完了",
+        "結果": errorCount > 0 ? "一部エラー" : "成功",
+        "処理件数": ssotRows.length,
+        "登録件数": newCount,
+        "エラー件数": errorCount,
+        "標準化成功件数": newCount + duplicateCount,
+        "終了日時": endTs
+      };
+      Object.keys(updates).forEach(key => {
+        const idx = historyHeaders.indexOf(key);
+        if (idx !== -1) {
+          historySheet.getRange(historyRowIdx, idx + 1).setValue(updates[key]);
+        }
+      });
+    }
+
+    return {
+      success: true,
+      message: `標準化が完了しました。\n\n新規：${newCount}件\n重複：${duplicateCount}件\nエラー：${errorCount}件\n\n保存先：\n23_標準化出荷データ`,
+      processedCount: finalRowsToSave.length,
+      errorDetails: errorDetails
+    };
+    
+    } catch (e) {
+      // 10_取込履歴の更新 (エラー)
+      if (historySheet && historyRowIdx > 0) {
+        const endTs = Utilities.formatDate(new Date(), tz, "yyyy/MM/dd HH:mm:ss");
+        const updates = {
+          "処理状態": "エラー",
+          "結果": "エラー",
+          "失敗工程": "標準化処理",
+          "エラー概要": String(e.message).substring(0, 500),
+          "終了日時": endTs
+        };
+        Object.keys(updates).forEach(key => {
+          const idx = historyHeaders.indexOf(key);
+          if (idx !== -1) {
+            historySheet.getRange(historyRowIdx, idx + 1).setValue(updates[key]);
+          }
+        });
+      }
+      throw e;
+    }
+  }
+  
+  // ▼画面側(Index.html)の計算プレビュー処理と全く同一の関数▼
+  static _calcFreight(rowValues, calcRuleArray) {
+    if (!calcRuleArray || calcRuleArray.length === 0) {
+      return { formulaText: "対象項目なし", resultText: "空白", value: "" };
+    }
+    
+    let total = 0;
+    let hasAnyValue = false;
+    let formulaParts = [];
+    let hasError = false;
+    let errorMsg = "";
+    
+    for (let i = 0; i < calcRuleArray.length; i++) {
+      const rule = calcRuleArray[i];
+      const rawVal = rowValues[rule.sourceIndex];
+      let valStr = (rawVal === null || rawVal === undefined) ? "" : String(rawVal);
+      
+      valStr = valStr.replace(/[,，円\s　]/g, "");
+      const opSign = rule.operator === "-" ? "－" : "＋";
+      
+      if (valStr === "") {
+        formulaParts.push(rule.role + "(空白)");
+      } else {
+        const num = Number(valStr);
+        if (isNaN(num)) {
+          formulaParts.push(rule.role + "(エラー:" + valStr + ")");
+          hasError = true;
+          errorMsg = rule.sourceName + "を数値変換できません";
+        } else {
+          formulaParts.push(opSign + " " + rule.role + "(" + num + ")");
+          hasAnyValue = true;
+          if (rule.operator === "-") {
+            total -= num;
+          } else {
+            total += num;
+          }
+        }
+      }
+    }
+    
+    let fText = formulaParts.join(" ");
+    if (fText.startsWith("＋ ")) fText = fText.substring(2);
+    
+    if (hasError) {
+      return { formulaText: fText, resultText: "エラー (" + errorMsg + ")", value: "", isError: true, errorMsg: errorMsg };
+    }
+    if (!hasAnyValue) {
+      return { formulaText: fText, resultText: "空白", value: "", isError: false };
+    }
+    return { formulaText: fText, resultText: total + "円", value: total, isError: false };
+  }
+
+  /**
+   * 1行の原本データを標準化25列に変換します。
+   * @param {Array} row - 原本データ1行 (値の配列)
+   * @param {String} rawId - 原本データID
+   * @param {String} stdId - 標準化データID
+   * @param {String} companyCode - 路線便会社コード
+   * @param {String} companyName - 路線便会社名
+   * @param {Array} mapping - 確定済みマッピング設定の配列
+   * @param {String} calcMethod - "直接取得" または "計算"
+   * @param {String} finalCalcRuleStr - 実績運賃計算ルール (JSON文字列)
+   * @param {String} surchargeHandling - サーチャージ取扱区分
+   * @param {String} tz - タイムゾーン
+   * @param {Array} fixedHeaders - 25列のヘッダー定義
+   * @returns {Object} { stdRow, hasError, errorMsgs }
+   */
+  static _standardizeSingleRow(
+    row,
+    rawId,
+    stdId,
+    companyCode,
+    companyName,
+    mapping,
+    calcMethod,
+    finalCalcRuleStr,
+    surchargeHandling,
+    tz,
+    fixedHeaders
+  ) {
+    const stdRow = new Array(fixedHeaders.length).fill("");
+    stdRow[0] = stdId;
+    stdRow[1] = rawId;
+    stdRow[4] = companyCode;
+    stdRow[5] = companyName;
+    
+    let hasError = false;
+    let errorMsgs = [];
+    
+    // 元項目の抽出と結合
+    let values = {};
+    // 結合用に並び替え（joinOrder順）
+    const sortedMapping = [...mapping].sort((a, b) => (a.joinOrder || 1) - (b.joinOrder || 1));
+    
+    sortedMapping.forEach(m => {
+      if (m.commonField === "使用しない" || m.commonField === "") return;
+      
+      let val = row[m.originalIndex];
+      if (val === null || val === undefined) val = "";
+      
+      if (values[m.commonField] !== undefined && values[m.commonField] !== "") {
+        const sep = m.joinMethod === "半角スペース" ? " " : (m.joinMethod === "全角スペース" ? "　" : "");
+        // 既に値がある場合はセパレータを挟んで結合
+        if (val !== "") {
+          values[m.commonField] += sep + val;
+        }
+      } else {
+        values[m.commonField] = val;
+      }
+    });
+    
+    Object.keys(values).forEach(commonField => {
+      const targetIdx = fixedHeaders.indexOf(commonField);
+      if (targetIdx > -1) {
+        stdRow[targetIdx] = values[commonField];
+      }
+    });
+    
+    
+    // --- サーチャージ値の取得と数値変換 ---
+    let rawSurchargeValStr = "";
+    let surchargeSourceFound = false;
+    const surchargeMapping = mapping.find(m => m.commonField === "燃料サーチャージ");
+    
+    if (surchargeMapping) {
+      surchargeSourceFound = true;
+      const rawVal = row[surchargeMapping.originalIndex];
+      rawSurchargeValStr = (rawVal === null || rawVal === undefined) ? "" : String(rawVal).replace(/[,，円\s　]/g, "");
+    }
+    
+    let surchargeNum = "";
+    let surchargeError = false;
+    if (surchargeSourceFound) {
+      if (rawSurchargeValStr === "") {
+        surchargeNum = "";
+      } else {
+        const n = Number(rawSurchargeValStr);
+        if (isNaN(n)) {
+          surchargeError = true;
+        } else {
+          surchargeNum = n;
+        }
+      }
+    }
+    
+    if (surchargeError) {
+       hasError = true;
+       errorMsgs.push("燃料サーチャージを数値変換できません");
+    }
+
+    // --- 基礎実績運賃の計算 ---
+    let baseFreight = "";
+    if (calcMethod === "計算" && finalCalcRuleStr) {
+       try {
+         const ruleObj = JSON.parse(finalCalcRuleStr);
+         if (ruleObj.type === "calc" && ruleObj.fields) {
+           // 既存計算ルールから燃料サーチャージを除外（二重加算防止）
+           const filteredFields = ruleObj.fields.filter(f => {
+             if (surchargeMapping && f.sourceIndex === surchargeMapping.originalIndex) return false;
+             return true;
+           });
+           const resultObj = RawDataController._calcFreight(row, filteredFields);
+           if (resultObj.isError) {
+              hasError = true;
+              errorMsgs.push(resultObj.errorMsg);
+           }
+           if (resultObj.value !== "") {
+              baseFreight = resultObj.value;
+           }
+         }
+       } catch(e) {
+         hasError = true;
+         errorMsgs.push("計算ルールのパースに失敗");
+       }
+    } else {
+       const fv = stdRow[fixedHeaders.indexOf("実績運賃")];
+       if (fv !== "" && fv !== null && fv !== undefined) {
+          const num = Number(String(fv).replace(/[,，円\s　]/g, ""));
+          if (!isNaN(num)) baseFreight = num;
+          else baseFreight = fv; 
+       }
+    }
+    
+    // --- 取扱区分に基づく実績運賃と燃料サーチャージの決定 ---
+    let finalFreight = baseFreight;
+    let finalSurcharge = surchargeNum;
+    let finalHandling = surchargeHandling;
+    
+    if (!surchargeError) {
+       if (surchargeHandling === "NONE") {
+          finalSurcharge = "";
+       } else if (surchargeHandling === "INCLUDED") {
+          // 加算せず取得値のみ保持
+       } else if (surchargeHandling === "ADDED") {
+          if (baseFreight !== "" && finalSurcharge !== "") {
+             finalFreight = Number(baseFreight) + Number(finalSurcharge);
+          }
+       } else if (surchargeHandling === "DETAIL_SEPARATE") {
+          // 加算せず取得値のみ保持
+       } else if (surchargeHandling === "PERIOD_SEPARATE") {
+          finalSurcharge = "";
+       }
+    }
+    
+    stdRow[fixedHeaders.indexOf("実績運賃")] = finalFreight;
+    stdRow[fixedHeaders.indexOf("燃料サーチャージ")] = finalSurcharge;
+    stdRow[fixedHeaders.indexOf("サーチャージ取扱区分")] = finalHandling;
+
+    
+    // 出荷日と対象年月の自動生成
+    const shipDateIdx = fixedHeaders.indexOf("出荷日");
+    const monthIdx = fixedHeaders.indexOf("対象年月");
+    let shipDateVal = stdRow[shipDateIdx];
+    
+    if (shipDateVal) {
+      try {
+         let strVal = String(shipDateVal).trim();
+         // YYYYMMDD (8桁の数字) の場合
+         if (/^\d{8}$/.test(strVal)) {
+           const y = strVal.substring(0, 4);
+           const m = strVal.substring(4, 6);
+           const d = strVal.substring(6, 8);
+           stdRow[shipDateIdx] = `${y}-${m}-${d}`;
+           stdRow[monthIdx] = `${y}-${m}`;
+         } else {
+           let d = new Date(shipDateVal);
+           if (!isNaN(d.getTime())) {
+             stdRow[shipDateIdx] = Utilities.formatDate(d, tz, "yyyy-MM-dd");
+             stdRow[monthIdx] = Utilities.formatDate(d, tz, "yyyy-MM");
+           } else if (!isNaN(Number(shipDateVal))) {
+             // Excelシリアル値対応
+             d = new Date(Math.round((Number(shipDateVal) - 25569) * 86400 * 1000));
+             if (!isNaN(d.getTime())) {
+               stdRow[shipDateIdx] = Utilities.formatDate(d, tz, "yyyy-MM-dd");
+               stdRow[monthIdx] = Utilities.formatDate(d, tz, "yyyy-MM");
+             } else {
+               throw new Error();
+             }
+           } else {
+             throw new Error();
+           }
+         }
+      } catch(e) {
+         hasError = true;
+         errorMsgs.push("出荷日の形式エラー");
+      }
+    } else {
+       hasError = true;
+       errorMsgs.push("出荷日が未設定");
+    }
+    
+    if (!stdRow[fixedHeaders.indexOf("届け先名称")]) {
+       hasError = true;
+       errorMsgs.push("届け先名称が未設定");
+    }
+    const freightVal = stdRow[fixedHeaders.indexOf("実績運賃")];
+    const isBlankFreight = freightVal === "" || freightVal === null || freightVal === undefined;
+    
+    if (isBlankFreight && calcMethod === "直接取得") {
+       hasError = true;
+       errorMsgs.push("実績運賃が未設定");
+    }
+
+    const validFlagIdx = fixedHeaders.indexOf("有効フラグ");
+    const errorFlagIdx = fixedHeaders.indexOf("エラー有無");
+    const noteIdx = fixedHeaders.indexOf("特記事項");
+    
+    if (validFlagIdx > -1) stdRow[validFlagIdx] = !hasError; // 有効フラグ（正常ならTRUE）
+    if (errorFlagIdx > -1) stdRow[errorFlagIdx] = hasError;  // エラー有無
+    if (noteIdx > -1) stdRow[noteIdx] = errorMsgs.join(", "); 
+    
+    return {
+      stdRow: stdRow,
+      hasError: hasError,
+      errorMsgs: errorMsgs
+    };
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "error": {
+    "code": 403,
+    "message": "The user has not granted the app 1072944905499 read access to the file 1QvLGuU2KDgjoRY80x7y_h9x6rISwaFsLZohwSrpR_yM.",
+    "errors": [
+      {
+        "message": "The user has not granted the app 1072944905499 read access to the file 1QvLGuU2KDgjoRY80x7y_h9x6rISwaFsLZohwSrpR_yM.",
+        "domain": "global",
+        "reason": "appNotAuthorizedToFile",
+        "location": "Authorization",
+        "locationType": "header"
+      }
+    ]
+  }
+}

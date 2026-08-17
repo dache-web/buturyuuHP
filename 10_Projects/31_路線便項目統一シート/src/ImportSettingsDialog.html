@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+      body { font-family: 'Inter', sans-serif; padding: 24px; background-color: #f9fafb; color: #111827; }
+      h2 { color: #1f2937; margin-top: 0; font-weight: 600; margin-bottom: 8px; }
+      p.desc { color: #4b5563; font-size: 14px; margin-bottom: 24px; }
+      
+      .form-group { margin-bottom: 16px; }
+      .form-group label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+      
+      input[type="text"], input[type="number"], input[type="month"], select, input[type="file"] {
+        width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid #d1d5db;
+        font-family: inherit; font-size: 14px; outline: none; box-sizing: border-box; background: white;
+      }
+      input:focus, select:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.2); }
+      
+      .readonly-box {
+        width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid #d1d5db;
+        background-color: #e5e7eb; color: #4b5563; font-size: 14px; box-sizing: border-box;
+      }
+
+      .actions { margin-top: 32px; text-align: right; display: flex; align-items: center; justify-content: flex-end; }
+      .btn { padding: 10px 24px; background-color: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background-color 0.2s; }
+      .btn:hover { background-color: #4338ca; }
+      .btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+      .spinner { margin-right: 12px; color: #4b5563; font-size: 14px; display: none; }
+      
+      #errorArea { display: none; background: #fef2f2; color: #b91c1c; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; border: 1px solid #fecaca; }
+    </style>
+  </head>
+  <body>
+    <h2>月次取込設定</h2>
+    <p class="desc">対象年月やファイル情報を指定して、取込を開始します。</p>
+    
+    <div id="errorArea"></div>
+
+    <div class="form-group">
+      <label>対象路線便会社 <span style="color:red">*</span></label>
+      <select id="companySelect" required>
+        <option value="">読込中...</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>対象年月 <span style="color:red">*</span></label>
+      <input type="month" id="targetMonth" required>
+    </div>
+    
+    <div class="form-group" style="display:none;">
+      <label>取込方法</label>
+      <input type="text" id="importMethod" readonly class="readonly-box">
+    </div>
+    
+    <div class="form-group" id="fileGroup" style="display:none;">
+      <label>対象ファイル <span style="color:red">*</span></label>
+      <input type="file" id="uploadFile" accept=".csv, .xlsx, .xls">
+    </div>
+    
+    <div class="form-group" id="sheetNameGroup" style="display:none;">
+      <label>対象シート名（任意）</label>
+      <input type="text" id="sheetName" placeholder="空欄の場合は1番目のシートを読み込みます">
+    </div>
+    
+    <div class="form-group" id="headerRowGroup" style="display:none;">
+      <label>ヘッダー行番号（任意）</label>
+      <input type="number" id="headerRow" min="1" placeholder="空欄の場合は自動判定します">
+    </div>
+    
+    <div class="form-group" id="fileNameGroup" style="display:none;">
+      <label>元ファイル名 (原本貼付時の記録用)</label>
+      <input type="text" id="fileName" placeholder="例: 202310_sagawa.csv">
+    </div>
+
+    <div class="actions">
+      <span class="spinner" id="spinner">処理中...</span>
+      <button class="btn" id="submitBtn" onclick="submitSettings()">取込開始</button>
+    </div>
+
+    <script>
+      let activeMethod = "";
+      
+      window.onload = function() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        document.getElementById('targetMonth').value = `${year}-${month}`;
+        
+        google.script.run
+          .withSuccessHandler(function(info) {
+            activeMethod = info.method;
+            document.getElementById('importMethod').value = activeMethod;
+            
+            const sel = document.getElementById('companySelect');
+            sel.innerHTML = "";
+            info.companies.forEach(c => {
+              const opt = document.createElement("option");
+              opt.value = c.key;
+              opt.textContent = c.name;
+              sel.appendChild(opt);
+            });
+            
+            toggleFields(activeMethod);
+          })
+          .getImportInitialInfo();
+      };
+
+      function toggleFields(method) {
+        const fileGroup = document.getElementById('fileGroup');
+        const sheetNameGroup = document.getElementById('sheetNameGroup');
+        const headerRowGroup = document.getElementById('headerRowGroup');
+        const fileNameGroup = document.getElementById('fileNameGroup');
+        const fileInput = document.getElementById('uploadFile');
+        
+        if (method === "CSVアップロード" || method === "Excelアップロード") {
+          fileGroup.style.display = 'block';
+          headerRowGroup.style.display = 'block';
+          fileNameGroup.style.display = 'none';
+          
+          if (method === "CSVアップロード") {
+            fileInput.accept = ".csv";
+            sheetNameGroup.style.display = 'none';
+          }
+          if (method === "Excelアップロード") {
+            fileInput.accept = ".xlsx, .xls";
+            sheetNameGroup.style.display = 'block';
+          }
+        } else {
+          // 原本貼付シート
+          fileGroup.style.display = 'none';
+          sheetNameGroup.style.display = 'none';
+          headerRowGroup.style.display = 'none'; // 直接判定
+          fileNameGroup.style.display = 'block';
+          fileInput.value = "";
+        }
+      }
+
+      function submitSettings() {
+        document.getElementById('errorArea').style.display = 'none';
+        
+        const companyKey = document.getElementById('companySelect').value;
+        const targetMonth = document.getElementById('targetMonth').value;
+        const importMethod = document.getElementById('importMethod').value;
+        let fileName = document.getElementById('fileName').value;
+        const fileInput = document.getElementById('uploadFile');
+        const sheetNameInput = document.getElementById('sheetName').value;
+        const headerRowInput = document.getElementById('headerRow').value;
+        
+        if (!companyKey) {
+          showError("路線便会社を選択してください。");
+          return;
+        }
+        
+        if (!targetMonth) {
+          showError("対象年月は必須です。");
+          return;
+        }
+        
+        if (importMethod !== "原本貼付シート" && fileInput.files.length === 0) {
+          showError("アップロードするファイルを選択してください。");
+          return;
+        }
+        
+        const btn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('spinner');
+        btn.disabled = true;
+        spinner.style.display = 'inline';
+        spinner.textContent = "データを読み込んでいます...";
+        
+        if (fileInput.files.length > 0 && !fileName) {
+          fileName = fileInput.files[0].name;
+        }
+        
+        const settings = {
+          targetMonth: targetMonth.replace("-", "/"),
+          importMethod: importMethod,
+          fileName: fileName,
+          formatName: "標準フォーマット",
+          targetSheetName: sheetNameInput,
+          specifiedHeaderRow: headerRowInput ? parseInt(headerRowInput, 10) : null
+        };
+        
+        if (importMethod !== "原本貼付シート") {
+          const file = fileInput.files[0];
+          const reader = new FileReader();
+          
+          reader.onload = function(e) {
+            try {
+              const data = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(data, {type: 'array'});
+              
+              let targetSheet = workbook.SheetNames[0];
+              if (settings.targetSheetName && workbook.SheetNames.includes(settings.targetSheetName)) {
+                targetSheet = settings.targetSheetName;
+              } else if (settings.targetSheetName) {
+                showError("指定されたシート名が見つかりません: " + settings.targetSheetName);
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                return;
+              }
+              
+              const worksheet = workbook.Sheets[targetSheet];
+              const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""});
+              
+              spinner.textContent = "サーバーへ送信中...";
+              sendToGas(companyKey, settings, jsonData);
+            } catch (err) {
+              showError("ファイルのパースに失敗しました: " + err.message);
+              btn.disabled = false;
+              spinner.style.display = 'none';
+            }
+          };
+          reader.readAsArrayBuffer(file);
+        } else {
+          sendToGas(companyKey, settings, null);
+        }
+      }
+      
+      function sendToGas(companyKey, settings, data2D) {
+        google.script.run
+          .withSuccessHandler(function() {
+            google.script.host.close();
+            // コントローラー側で直接パースデータを処理する
+            google.script.run.proceedWithParsedData(companyKey, settings, data2D);
+          })
+          .withFailureHandler(function(err) {
+            showError("サーバー通信エラー: " + (err.message || "データが大きすぎる可能性があります。"));
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('spinner').style.display = 'none';
+          })
+          .saveImportSettings(settings);
+      }
+      
+      function showError(msg) {
+        const errArea = document.getElementById('errorArea');
+        errArea.style.display = 'block';
+        errArea.textContent = msg;
+      }
+    </script>
+  </body>
+</html>

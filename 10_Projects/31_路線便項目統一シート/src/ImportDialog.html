@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; padding: 24px; background-color: #f9fafb; color: #111827; }
+    h2 { color: #1f2937; margin-top: 0; font-weight: 600; margin-bottom: 8px; }
+    p.desc { color: #4b5563; font-size: 14px; margin-bottom: 24px; }
+    
+    .upload-area {
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 48px 24px;
+      text-align: center;
+      background-color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .upload-area:hover {
+      border-color: #4f46e5;
+      background-color: #eef2ff;
+    }
+    
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .upload-text {
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+    
+    .upload-subtext {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    
+    .alert-box {
+      margin-top: 24px;
+      padding: 16px;
+      background-color: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #92400e;
+    }
+    
+    input[type="file"] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>ファイルから取り込む</h2>
+  <p class="desc">パソコン上のCSVまたはExcelファイルを選択してアップロードします。</p>
+
+  <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📁</div>
+    <div class="upload-text">クリックしてファイルを選択</div>
+    <div class="upload-subtext">対応形式: .csv, .xlsx, .xls</div>
+    <input type="file" id="fileInput" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+  </div>
+  
+  <div class="alert-box">
+    <strong>お知らせ:</strong><br>
+    現在、ブラウザからの直接アップロード処理は初期段階のため開発中です。まずはメニューの「〇社原本を読み取る」を使用する<strong>直接貼付方式</strong>をご利用ください。
+  </div>
+
+  <script>
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      if(e.target.files.length > 0) {
+        const file = e.target.files[0];
+        alert(`選択されたファイル: ${file.name}\n\n※この機能は現在開発中のため、取り込みは行われません。スプレッドシートへの直接貼付方式をご利用ください。`);
+        // リセット
+        e.target.value = '';
+      }
+    });
+  </script>
+</body>
+</html>

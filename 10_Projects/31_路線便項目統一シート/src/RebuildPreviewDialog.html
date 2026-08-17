@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; padding: 20px; font-size: 14px; color: #333; }
+      table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+      th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+      th { background-color: #f4f4f4; font-weight: bold; }
+      .btn { padding: 6px 12px; cursor: pointer; background: #2563EB; color: #fff; border: none; border-radius: 4px; }
+      .btn:hover { background: #1D4ED8; }
+      #loading { display: none; color: #2563EB; font-weight: bold; margin-bottom: 15px; }
+    </style>
+  </head>
+  <body>
+    <h3>標準化データ再生成プレビュー</h3>
+    <p>15_取込一時データに保存された原本データを最新のマスタ設定で再標準化し、プレビューシート(27_標準化再生成プレビュー)に出力します。</p>
+    <div id="loading">読み込み中...</div>
+    <div id="content">
+      <table id="importTable">
+        <thead>
+          <tr>
+            <th>取込ID</th>
+            <th>取込日時</th>
+            <th>会社名</th>
+            <th>フォーマットID</th>
+            <th>契約プロファイル名</th>
+            <th>原本件数</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+
+    <script>
+      function loadImports() {
+        document.getElementById('loading').style.display = 'block';
+        google.script.run.withSuccessHandler(function(imports) {
+          document.getElementById('loading').style.display = 'none';
+          const tbody = document.querySelector('#importTable tbody');
+          tbody.innerHTML = '';
+          if (!imports || imports.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7">対象データがありません</td></tr>';
+            return;
+          }
+          
+          imports.forEach(function(imp) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${imp.importId || ''}</td>
+              <td>${imp.ts || ''}</td>
+              <td>${imp.companyName || ''}</td>
+              <td>${imp.formatId || ''}</td>
+              <td>${imp.profileName || ''}</td>
+              <td>${imp.count || 0}</td>
+              <td><button class="btn" onclick="executeRebuild('${imp.importId}')">プレビュー生成</button></td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }).withFailureHandler(function(err) {
+          document.getElementById('loading').style.display = 'none';
+          alert('エラー: ' + err.message);
+        }).apiGetRebuildPreviewImportList();
+      }
+
+      function executeRebuild(importId) {
+        if (!confirm('取込ID ' + importId + ' の再生成プレビューを作成しますか？\\n既存のプレビューシート(27)は上書きされます。')) return;
+        
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('loading').innerText = 'プレビュー生成中... (数十秒かかる場合があります)';
+        
+        google.script.run.withSuccessHandler(function(res) {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('loading').innerText = '読み込み中...';
+          alert(res.message);
+        }).withFailureHandler(function(err) {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('loading').innerText = '読み込み中...';
+          alert('プレビュー生成失敗: ' + err.message);
+        }).apiExecuteRebuildPreview(importId);
+      }
+      
+      window.onload = loadImports;
+    </script>
+  </body>
+</html>

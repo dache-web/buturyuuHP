@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg: #f9fafb;
+      --text: #1f2937;
+      --border: #e5e7eb;
+      --error: #ef4444;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+    h2 {
+      font-size: 1.25rem;
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+    .info-bar {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background-color: #f3f4f6;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    select, input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .unique-fields {
+      display: none;
+      background: #f8fafc;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: 1px dashed var(--border);
+    }
+    .unique-fields label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+    .unique-fields input, .unique-fields select {
+      margin-bottom: 8px;
+    }
+    .unique-fields .required {
+      color: var(--error);
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .format-name-box {
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .error-msg {
+      color: var(--error);
+      font-size: 0.85rem;
+      margin-top: 5px;
+      display: none;
+    }
+    #loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.8);
+      z-index: 10;
+    }
+    .browser-log-area {
+      background: #f8fafc; border: 1px solid var(--border); border-radius: 8px;
+      padding: 1rem; margin-top: 1.5rem; height: 100px; overflow-y: auto;
+      font-family: monospace; font-size: 0.85rem; color: #334155;
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading">読込中...</div>
+
+<div id="content" style="display: none;">
+  <div class="info-bar">
+    <strong>対象会社:</strong> <span id="companyName"></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>原本の項目名</th>
+        <th>サンプル値</th>
+        <th>この項目の意味</th>
+      </tr>
+    </thead>
+    <tbody id="mappingBody">
+    </tbody>
+  </table>
+
+  <div class="format-name-box">
+    <label><strong>保存するフォーマット名</strong> <span class="required" style="color:red">*</span></label>
+    <input type="text" id="formatName" placeholder="例: A社標準フォーマット">
+    <div id="formatNameError" class="error-msg">フォーマット名を入力してください</div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="save()">この内容でフォーマットを保存</button>
+  </div>
+
+  <div class="format-name-box" style="margin-top: 20px;">
+    <h3 style="margin-top: 0; font-size: 1rem; color: var(--text-muted);">ブラウザ操作記録</h3>
+    <div class="browser-log-area" id="browser-log"></div>
+    <div style="text-align: right; margin-top: 0.5rem;">
+      <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="copyBrowserLog()">記録をコピー</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let serverData = null;
+
+  function addOperationLog(message) {
+    const logArea = document.getElementById('browser-log');
+    if (!logArea) return;
+    const now = new Date();
+    const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0') + ":" + now.getSeconds().toString().padStart(2, '0');
+    const line = document.createElement('div');
+    line.textContent = `・${timeStr} ${message}`;
+    logArea.appendChild(line);
+    logArea.scrollTop = logArea.scrollHeight;
+  }
+
+  function copyBrowserLog() {
+    const logArea = document.getElementById('browser-log');
+    const text = logArea.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      alert("操作記録をコピーしました。エラー報告時に貼り付けてください。");
+    });
+  }
+
+  addOperationLog("フォーマット読取画面を開きました");
+  google.script.run.withSuccessHandler(init).getFormatReaderInfo();
+
+  function init(data) {
+    addOperationLog("既存フォーマット情報の取得に成功しました");
+    serverData = data;
+    document.getElementById("companyName").textContent = data.companyName;
+    document.getElementById("formatName").value = data.companyName + "フォーマット";
+
+    const tbody = document.getElementById("mappingBody");
+    
+    // オプションの生成
+    let optionsHtml = '<option value="">-- 選択してください --</option>';
+    data.roleCategories.forEach(cat => {
+      optionsHtml += `<optgroup label="【${cat}】" data-category="${cat}">`;
+      data.standardRoles[cat].forEach(role => {
+        optionsHtml += `<option value="${role}" data-category="${cat}">${role}</option>`;
+      });
+      optionsHtml += `</optgroup>`;
+    });
+
+    data.headers.forEach((header, index) => {
+      const sample = data.samples[index] || "";
+      const tr = document.createElement("tr");
+      
+      tr.innerHTML = `
+        <td>${header}</td>
+        <td>${sample}</td>
+        <td>
+          <select id="role_${index}" onchange="toggleUnique(${index})">
+            ${optionsHtml}
+          </select>
+          <div class="error-msg" id="error_${index}">役割を選択してください</div>
+          
+          <div class="unique-fields" id="unique_${index}">
+            <label>独自項目名</label>
+            <input type="text" id="uniqueName_${index}" placeholder="例: カスタム1">
+            
+            <label>何の情報か <span class="required">*</span></label>
+            <input type="text" id="uniqueDesc_${index}" placeholder="例: クライアント独自の管理ID">
+            <div class="error-msg" id="uniqueDescError_${index}">何の情報か説明を入力してください</div>
+            
+            <label>データ型</label>
+            <select id="dataType_${index}">
+              <option value="文字列">文字列</option>
+              <option value="数値">数値</option>
+              <option value="日付">日付</option>
+            </select>
+            
+            <label>
+              <input type="checkbox" id="laterUse_${index}"> 後で使う可能性がある
+            </label>
+            
+            <label>備考</label>
+            <input type="text" id="remarks_${index}">
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("content").style.display = "block";
+  }
+
+  function toggleUnique(index) {
+    const roleSelect = document.getElementById(`role_${index}`);
+    const uniqueDiv = document.getElementById(`unique_${index}`);
+    if (roleSelect.value === "独自項目") {
+      uniqueDiv.style.display = "block";
+    } else {
+      uniqueDiv.style.display = "none";
+    }
+  }
+
+  function save() {
+    let hasError = false;
+    const formatName = document.getElementById("formatName").value.trim();
+    if (!formatName) {
+      document.getElementById("formatNameError").style.display = "block";
+      hasError = true;
+    } else {
+      document.getElementById("formatNameError").style.display = "none";
+    }
+
+    const mappingData = [];
+    serverData.headers.forEach((header, index) => {
+      const role = document.getElementById(`role_${index}`).value;
+      if (!role) {
+        document.getElementById(`error_${index}`).style.display = "block";
+        hasError = true;
+      } else {
+        document.getElementById(`error_${index}`).style.display = "none";
+      }
+
+      let uniqueData = {};
+      let customRole = "";
+      let description = "";
+      let category = "";
+      
+      const selectElem = document.getElementById(`role_${index}`);
+      if (selectElem.selectedIndex > 0) {
+        category = selectElem.options[selectElem.selectedIndex].getAttribute('data-category');
+      }
+
+      if (role === "独自項目") {
+        const desc = document.getElementById(`uniqueDesc_${index}`).value.trim();
+        if (!desc) {
+          document.getElementById(`uniqueDescError_${index}`).style.display = "block";
+          hasError = true;
+        } else {
+          document.getElementById(`uniqueDescError_${index}`).style.display = "none";
+        }
+        customRole = document.getElementById(`uniqueName_${index}`).value.trim();
+        description = desc;
+        uniqueData = {
+          dataType: document.getElementById(`dataType_${index}`).value,
+          laterUse: document.getElementById(`laterUse_${index}`).checked,
+          remarks: document.getElementById(`remarks_${index}`).value.trim()
+        };
+      }
+
+      mappingData.push({
+        originalName: header,
+        sample: serverData.samples[index] || "",
+        standardRole: role,
+        category: category,
+        customRole: customRole,
+        description: description,
+        ...uniqueData
+      });
+    });
+
+    if (hasError) {
+      alert("入力にエラーがあります。赤字の項目を確認してください。");
+      return;
+    }
+
+    addOperationLog("フォーマット保存ボタンを押しました。GASへ処理を送信します");
+    document.getElementById("loading").style.display = "flex";
+    document.getElementById("loading").textContent = "保存中...";
+    document.getElementById("content").style.display = "none";
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          addOperationLog(`保存完了 (処理ID: ${res.processId})`);
+          alert("保存成功: " + res.message + "\n(処理ID: " + res.processId + ")");
+          google.script.host.close();
+        } else {
+          addOperationLog(`GAS側でエラーが発生しました (処理ID: ${res.processId || "未発行"})`);
+          const msg = "【保存失敗】\n処理ID: " + (res.processId || "未発行") + "\n失敗工程: " + (res.stage || "不明") + "\nエラー内容: " + (res.message || "不明");
+          alert(msg + "\n\n11_エラーログシートをご確認ください。");
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("content").style.display = "block";
+        }
+      })
+      .withFailureHandler(function(err) {
+        addOperationLog("GAS関数の呼び出しに失敗しました: " + err.message);
+        alert("【システムエラー】\n処理開始の記録に失敗しました。GASの呼出しまで到達していない可能性があります。\n\n詳細: " + err.message);
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("content").style.display = "block";
+      })
+      .saveFormatReaderMapping(mappingData, formatName);
+  }
+</script>
+</body>
+</html>

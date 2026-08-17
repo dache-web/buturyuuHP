@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', sans-serif; padding: 20px; background-color: #f3f4f6; color: #111827; }
+      h2 { color: #1f2937; margin-top: 0; font-weight: 600; }
+      .desc { color: #4b5563; margin-bottom: 20px; font-size: 14px; }
+      
+      #debugArea {
+        background: #1e293b; color: #10b981; padding: 12px; border-radius: 6px;
+        font-family: monospace; font-size: 13px; margin-bottom: 16px;
+        white-space: pre-wrap; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+      }
+      
+      #errorArea {
+        display: none; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;
+        padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px;
+      }
+
+      .card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1px; }
+      table { width: 100%; border-collapse: collapse; background: white; table-layout: fixed; }
+      th, td { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: left; font-size: 14px; vertical-align: top; }
+      th { background-color: #f9fafb; color: #374151; font-weight: 600; }
+      
+      select, input[type="text"], input[type="number"] {
+        width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #d1d5db;
+        font-family: inherit; font-size: 14px; outline: none; box-sizing: border-box;
+      }
+      select:focus, input:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.2); }
+      
+      .role-selects { display: flex; gap: 12px; margin-bottom: 8px; }
+      .role-selects select { flex: 1; }
+      
+      .custom-role-form {
+        display: none; margin-top: 12px; padding: 16px; background: #f9fafb;
+        border: 1px solid #e5e7eb; border-radius: 6px;
+      }
+      .custom-role-form label { display: block; font-size: 12px; font-weight: 500; color: #4b5563; margin-bottom: 4px; }
+      .custom-role-form .row { display: flex; gap: 12px; margin-bottom: 12px; }
+      .custom-role-form .col { flex: 1; }
+      
+      .sample-value { font-size: 12px; color: #6b7280; margin-top: 4px; display: block; word-break: break-all; }
+      
+      .actions { margin-top: 24px; text-align: right; display: flex; align-items: center; justify-content: flex-end; }
+      .btn { padding: 10px 24px; background-color: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background-color 0.2s; }
+      .btn:hover { background-color: #4338ca; }
+      .btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+      .spinner { margin-right: 12px; color: #4b5563; font-size: 14px; font-weight: 500; }
+    </style>
+  </head>
+  <body>
+    <h2>項目マッピング確認 - <span id="companyName">...</span></h2>
+    <p class="desc">各原本項目が何を表すのか（役割）を選択してください。既存の選択肢にない場合は「その他・独自項目」から定義できます。</p>
+    
+    <div id="debugArea">データを取得中...</div>
+    <div id="errorArea"></div>
+    
+    <div class="card" id="tableContainer" style="display: none;">
+      <table id="mappingTable">
+        <thead>
+          <tr>
+            <th style="width: 35%">原本の列名・サンプル値</th>
+            <th style="width: 65%">この項目の意味</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- JSで動的に追加 -->
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="actions">
+      <span class="spinner" id="spinner">⏳ 処理中...お待ちください</span>
+      <button class="btn" id="saveBtn" onclick="saveMapping()" disabled>保存して取込を完了する</button>
+    </div>
+
+    <script>
+      let pageData = {};
+      const DATA_TYPES = ["文字列", "数値", "金額", "日付", "重量", "個数", "郵便番号", "コード"];
+      
+      function logDebug(message) {
+        const area = document.getElementById('debugArea');
+        area.textContent += '\n' + message;
+      }
+      
+      function showError(message) {
+        const errArea = document.getElementById('errorArea');
+        errArea.style.display = 'block';
+        errArea.textContent = 'エラー: ' + message;
+      }
+      
+      function hideSpinner() {
+        document.getElementById('spinner').style.display = 'none';
+      }
+      
+      function showSpinner(text) {
+        const spinner = document.getElementById('spinner');
+        spinner.style.display = 'inline';
+        spinner.textContent = '⏳ ' + text;
+      }
+      
+      window.onload = function() {
+        google.script.run
+          .withSuccessHandler(onDataLoaded)
+          .withFailureHandler(function(err) {
+            hideSpinner();
+            showError('サーバー通信に失敗しました。' + err.message);
+            logDebug('エラー内容: ' + err.message);
+          })
+          .getMappingData();
+      };
+      
+      function onDataLoaded(data) {
+        console.log("GAS Response Data:", data);
+        pageData = data;
+        
+        try {
+          logDebug("GAS応答受信済み");
+          logDebug("返却データの型: " + typeof data);
+          
+          if (!data || typeof data !== 'object') {
+            throw new Error("不正なデータ形式を受信しました。");
+          }
+          
+          document.getElementById('companyName').textContent = data.companyInfo ? data.companyInfo.name : "不明な会社";
+          
+          const headers = data.headers || [];
+          logDebug(`検出ヘッダー行: ${data.headerRow}`);
+          logDebug(`検出列数: ${headers.length}`);
+          logDebug("描画処理開始");
+          
+          const tbody = document.querySelector('#mappingTable tbody');
+          if (headers.length === 0) {
+            showError("読み取れる項目がありません");
+            logDebug("描画処理完了 (データ0件)");
+            return;
+          }
+          
+          document.getElementById('tableContainer').style.display = 'block';
+          
+          headers.forEach((h, index) => {
+            const tr = document.createElement('tr');
+            tr.dataset.index = index;
+            
+            // 左列：原本列名とサンプル
+            const tdRaw = document.createElement('td');
+            const rawNameDiv = document.createElement('div');
+            rawNameDiv.style.fontWeight = "600";
+            rawNameDiv.textContent = h.rawName || "(空白の列)";
+            tdRaw.appendChild(rawNameDiv);
+            
+            if (h.sampleValue) {
+              const sampleSpan = document.createElement('span');
+              sampleSpan.className = 'sample-value';
+              sampleSpan.textContent = `例: ${h.sampleValue}`;
+              tdRaw.appendChild(sampleSpan);
+            }
+            
+            // 右列：役割マッピングUI
+            const tdRole = document.createElement('td');
+            
+            const selectsDiv = document.createElement('div');
+            selectsDiv.className = "role-selects";
+            
+            const catSelect = document.createElement('select');
+            catSelect.className = "cat-select";
+            const roleSelect = document.createElement('select');
+            roleSelect.className = "role-select";
+            
+            // カテゴリの初期化
+            const optCatEmpty = document.createElement('option');
+            optCatEmpty.value = "";
+            optCatEmpty.textContent = "役割分類を選択...";
+            catSelect.appendChild(optCatEmpty);
+            
+            data.roleCategories.forEach(cat => {
+              const opt = document.createElement('option');
+              opt.value = cat;
+              opt.textContent = cat;
+              if (h.saved && h.saved.category === cat) opt.selected = true;
+              catSelect.appendChild(opt);
+            });
+            
+            // 標準役割の更新関数
+            const updateRoles = () => {
+              roleSelect.innerHTML = "";
+              const cat = catSelect.value;
+              const roles = data.standardRoles[cat] || [];
+              
+              if (roles.length > 0) {
+                roles.forEach(r => {
+                  const opt = document.createElement('option');
+                  opt.value = r;
+                  opt.textContent = r;
+                  if (h.saved && h.saved.standardRole === r) opt.selected = true;
+                  roleSelect.appendChild(opt);
+                });
+                roleSelect.style.display = 'block';
+              } else {
+                roleSelect.style.display = 'none';
+              }
+              
+              // 独自項目フォームの表示切り替え
+              const customForm = tr.querySelector('.custom-role-form');
+              if (cat === "その他・独自項目") {
+                customForm.style.display = 'block';
+              } else {
+                customForm.style.display = 'none';
+              }
+            };
+            
+            catSelect.addEventListener('change', updateRoles);
+            
+            selectsDiv.appendChild(catSelect);
+            selectsDiv.appendChild(roleSelect);
+            tdRole.appendChild(selectsDiv);
+            
+            // 自由入力フォーム構築
+            const customForm = document.createElement('div');
+            customForm.className = "custom-role-form";
+            
+            customForm.innerHTML = `
+              <div class="row">
+                <div class="col">
+                  <label>独自役割名</label>
+                  <input type="text" class="custom-name" value="${h.saved ? (h.saved.customRole || '') : ''}">
+                </div>
+                <div class="col">
+                  <label>データ型 <span style="color:red">*</span></label>
+                  <select class="custom-datatype">
+                    <option value="">選択してください</option>
+                    ${DATA_TYPES.map(dt => `<option value="${dt}" ${h.saved && h.saved.dataType === dt ? 'selected' : ''}>${dt}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <div class="row" style="margin-bottom: 8px;">
+                <div class="col">
+                  <label>役割説明 <span style="color:red">*</span></label>
+                  <input type="text" class="custom-desc" value="${h.saved ? (h.saved.description || '') : ''}">
+                </div>
+              </div>
+              <div class="row" style="margin-bottom: 8px;">
+                <div class="col">
+                  <label>使用区分</label>
+                  <select class="custom-usetype">
+                    ${data.useTypes.map(ut => `<option value="${ut}" ${h.saved && h.saved.useType === ut ? 'selected' : ''}>${ut}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="col">
+                  <label>結合グループ (任意)</label>
+                  <input type="text" class="custom-group" value="${h.saved ? (h.saved.group || '') : ''}" placeholder="例: 届け先住所">
+                </div>
+                <div class="col">
+                  <label>結合順序</label>
+                  <input type="number" class="custom-order" value="${h.saved ? (h.saved.order || '') : ''}" placeholder="例: 1">
+                </div>
+              </div>
+            `;
+            
+            tdRole.appendChild(customForm);
+            
+            tr.appendChild(tdRaw);
+            tr.appendChild(tdRole);
+            tbody.appendChild(tr);
+            
+            // 初期状態の反映
+            updateRoles();
+          });
+          
+          logDebug("描画処理完了");
+          document.getElementById('saveBtn').disabled = false;
+          
+        } catch (e) {
+          showError("画面描画中にエラーが発生しました: " + e.message);
+          console.error("Rendering Error:", e);
+        } finally {
+          hideSpinner();
+        }
+      }
+      
+      function saveMapping() {
+        document.getElementById('errorArea').style.display = 'none';
+        
+        const finalMapping = [];
+        const rows = document.querySelectorAll('#mappingTable tbody tr');
+        let hasError = false;
+        
+        rows.forEach(tr => {
+          const index = tr.dataset.index;
+          const h = pageData.headers[index];
+          const cat = tr.querySelector('.cat-select').value;
+          
+          if (!cat) return; // 未選択はスキップ (またはエラーにするか運用次第ですがスキップします)
+          
+          const role = tr.querySelector('.role-select').style.display !== 'none' ? tr.querySelector('.role-select').value : "";
+          
+          const mappingObj = {
+            rawColIndex: h.rawColIndex,
+            rawName: h.rawName,
+            sampleValue: h.sampleValue,
+            category: cat,
+            standardRole: role,
+            customRole: "",
+            description: "",
+            dataType: "",
+            useType: "",
+            group: "",
+            order: ""
+          };
+          
+          if (cat === "その他・独自項目") {
+            const desc = tr.querySelector('.custom-desc').value.trim();
+            const dataType = tr.querySelector('.custom-datatype').value;
+            
+            if (!desc || !dataType) {
+              showError(`項目「${h.rawName}」の役割説明とデータ型は必須です。`);
+              hasError = true;
+              return;
+            }
+            
+            mappingObj.customRole = tr.querySelector('.custom-name').value.trim();
+            mappingObj.description = desc;
+            mappingObj.dataType = dataType;
+            mappingObj.useType = tr.querySelector('.custom-usetype').value;
+            mappingObj.group = tr.querySelector('.custom-group').value.trim();
+            mappingObj.order = tr.querySelector('.custom-order').value;
+          }
+          
+          finalMapping.push(mappingObj);
+        });
+        
+        if (hasError) return;
+        
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        showSpinner('マスタへ保存してシートを作成中...');
+        
+        google.script.run
+          .withSuccessHandler(function() {
+            hideSpinner();
+            google.script.host.close();
+          })
+          .withFailureHandler(function(err) {
+            hideSpinner();
+            showError("保存時にエラーが発生しました: " + err.message);
+            btn.disabled = false;
+          })
+          .processConversion(finalMapping);
+      }
+    </script>
+  </body>
+</html>
