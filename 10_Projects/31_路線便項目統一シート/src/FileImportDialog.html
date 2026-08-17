@@ -256,6 +256,25 @@
   </div>
 </div>
 
+<!-- Step 3: 処理完了結果（旧正式フロー復元） -->
+<div id="step-3" class="step">
+  <div style="background:#fff; padding:15px; border:1px solid #cbd5e0; border-radius:4px; margin-bottom:15px;">
+    <h3 style="margin-top:0; color:#2b6cb0; font-size:1.1rem; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">3. 処理完了結果</h3>
+    <p id="result-message" style="font-size:0.95rem; font-weight:bold; white-space:pre-wrap; color:#2d3748; line-height:1.6;"></p>
+  </div>
+  
+  <div id="error-details-container" style="display:none; margin-top:10px; background:#fff5f5; padding:10px; border:1px solid #feb2b2; border-radius:4px;">
+    <strong style="color:#c53030; font-size:0.9rem;">エラー詳細：</strong>
+    <pre id="error-details-text" style="margin-top:6px; font-size:0.85rem; white-space:pre-wrap; color:#742a2a; max-height:150px; overflow-y:auto;"></pre>
+  </div>
+  
+  <div style="margin-top:20px; display:flex; gap:10px;">
+    <button type="button" class="btn btn-primary" onclick="downloadCsv()">標準化CSVを出力（UTF-8 BOM付）</button>
+    <button type="button" class="btn btn-secondary" onclick="goToStep(2)">マッピング修正に戻る</button>
+    <button type="button" class="btn btn-secondary" onclick="google.script.host.close()">閉じる</button>
+  </div>
+</div>
+
 <script>
   let serverData = {};
   let currentSession = {};
@@ -717,54 +736,71 @@
 
     google.script.run
       .withSuccessHandler(res => {
+        hideLoading();
         if (!res || !res.success) {
-          hideLoading();
           alert("標準化処理エラー: " + (res ? res.message : "不明なエラー"));
           return;
         }
 
-        const successMsg = res.message || "標準化処理が完了しました。";
+        document.getElementById('result-message').textContent = res.message || "標準化処理が正常に完了しました。";
 
-        showLoading("標準化CSVを出力中...");
-        google.script.run
-          .withSuccessHandler(csvRes => {
-            hideLoading();
-            if (csvRes && csvRes.contentBase64) {
-              try {
-                const byteCharacters = atob(csvRes.contentBase64);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                  byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a");
-                const url = URL.createObjectURL(blob);
-                link.setAttribute("href", url);
-                link.setAttribute("download", csvRes.filename || "standardized.csv");
-                link.style.display = "none";
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              } catch(e) {
-                console.error("CSVダウンロード処理エラー:", e);
-              }
-            }
-            alert(successMsg);
-            google.script.host.close();
-          })
-          .withFailureHandler(csvErr => {
-            hideLoading();
-            alert(successMsg + "\n\n(※CSV出力通知: " + csvErr.message + ")");
-            google.script.host.close();
-          })
-          .apiGenerateCsv(payload.companyCode, null);
+        const errDetailsContainer = document.getElementById('error-details-container');
+        const errDetailsText = document.getElementById('error-details-text');
+        if (res.errorDetails && res.errorDetails.length > 0) {
+          if (errDetailsContainer) errDetailsContainer.style.display = "block";
+          if (errDetailsText) errDetailsText.textContent = res.errorDetails.map((e, i) => `${i+1}.\n${e}`).join('\n\n');
+        } else {
+          if (errDetailsContainer) errDetailsContainer.style.display = "none";
+          if (errDetailsText) errDetailsText.textContent = "";
+        }
+
+        goToStep(3);
       })
       .withFailureHandler(err => {
         hideLoading();
         alert("通信エラー: " + err.message);
       })
       .apiSaveMappingAndStandardize(payload);
+  }
+
+  function downloadCsv() {
+    if (!currentSession || !currentSession.companyCode) {
+      alert("対象会社情報が読み取れません。");
+      return;
+    }
+    showLoading("標準化CSVを出力中...");
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res && res.contentBase64) {
+          try {
+            const byteCharacters = atob(res.contentBase64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", res.filename || "standardized.csv");
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          } catch(e) {
+            alert("CSVダウンロード処理エラー: " + e.message);
+          }
+        } else {
+          alert("出力対象のCSVデータが存在しません。");
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        alert("CSV出力通信エラー: " + err.message);
+      })
+      .apiGenerateCsv(currentSession.companyCode, null);
   }
 </script>
 

@@ -102,6 +102,55 @@ function setup() {
     console.error("セットアップ中にエラーが発生しました: " + e.message);
     errors++;
     const ui = SpreadsheetApp.getUi();
-    ui.alert("セットアップエラー", "処理中にエラーが発生しました。ログを確認してください。\\n" + e.message, ui.ButtonSet.OK);
   }
+}
+
+function getImportRealValues() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const historySheet = ss.getSheetByName(CONFIG.SHEET_NAMES.HISTORY);
+  const tempSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.TEMP_DATA);
+  const analysisSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.ANALYSIS_DATA);
+
+  let importId = "未実施/なし";
+  let targetCount = 0;
+  let newCount = 0;
+  let duplicateCount = 0;
+  let errorCount = 0;
+
+  if (historySheet && historySheet.getLastRow() > 1) {
+    const hData = historySheet.getDataRange().getValues();
+    const hHeaders = hData[0];
+    const lastRow = hData[hData.length - 1];
+    
+    const getHVal = (colName) => {
+      const idx = hHeaders.indexOf(colName);
+      return idx > -1 ? lastRow[idx] : "";
+    };
+
+    importId = getHVal("取込ID") || "なし";
+    targetCount = Number(getHVal("読込件数") || getHVal("読込予定件数") || 0);
+    newCount = Number(getHVal("登録件数") || 0);
+    duplicateCount = Number(getHVal("重複件数") || 0);
+    errorCount = Number(getHVal("エラー件数") || 0);
+  }
+
+  let tempCount = 0;
+  if (tempSheet && tempSheet.getLastRow() > 1 && importId !== "未実施/なし") {
+    const tData = tempSheet.getDataRange().getValues();
+    for (let i = 1; i < tData.length; i++) {
+      if (tData[i][1] === importId) tempCount++;
+    }
+  }
+
+  const resultObj = {
+    importId: importId,
+    tempDataCount: tempCount,
+    targetCount: targetCount,
+    newCount: newCount,
+    duplicateCount: duplicateCount,
+    errorCount: errorCount
+  };
+
+  console.log("【実機データ計測結果】", JSON.stringify(resultObj));
+  return resultObj;
 }

@@ -63,7 +63,8 @@ class ImportController {
       carriers: carriers,
       commonFields: CONFIG.MAPPABLE_FIELDS,
       requiredFields: CONFIG.MAPPING_REQUIRED_FIELDS,
-      existingSheets: existingSheets
+      existingSheets: existingSheets,
+      realValues: typeof getImportRealValues === 'function' ? getImportRealValues() : null
     };
   }
 
