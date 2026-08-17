@@ -4,6 +4,7 @@
 function onOpen(e) {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu("路線便データ取込・標準化")
+    .addItem("【復旧版】ファイルから取り込む", "showFileImportDialog")
     .addItem("CSV・Excelデータを取り込む", "importCsvExcel")
     .addItem("項目役割マスタ", "openRoleMaster")
     .addSeparator()
@@ -56,6 +57,14 @@ function menuDeleteTestData() {
 // ==========================================
 // ラッパー関数群 (RawDataControllerへの委譲)
 // ==========================================
+
+function showFileImportDialog() {
+  const html = HtmlService.createHtmlOutputFromFile("FileImportDialog")
+    .setTitle("路線便データ取込（復旧版）")
+    .setWidth(750)
+    .setHeight(650);
+  SpreadsheetApp.getUi().showModalDialog(html, "路線便データ取込");
+}
 
 // 旧読込メニュー用のラッパー関数（A社〜D社個別メニューは廃止されました）
 function importCsvExcel() { 
