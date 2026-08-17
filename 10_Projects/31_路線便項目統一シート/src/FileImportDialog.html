@@ -151,7 +151,7 @@
 
 <h2>路線便データ取込</h2>
 
-<!-- Step 1: ファイル/既存シート選択 -->
+<!-- Step 1: ファイル選択 -->
 <div id="step-1" class="step active">
   <form id="importForm" onsubmit="return false;">
     <div class="form-group">
@@ -161,27 +161,10 @@
       </select>
     </div>
 
-    <div class="form-group" style="background:#fff; padding:10px; border:1px solid #cbd5e0; border-radius:4px; margin-bottom:15px;">
-      <label style="margin-bottom:8px; color:#2b6cb0;">2. 取込元データの指定方法：</label>
-      <label style="font-weight:normal; margin-right:15px; cursor:pointer;">
-        <input type="radio" name="importSourceType" value="file" checked onchange="toggleImportSource()"> 外部ファイル (.csv / .xlsx)
-      </label>
-      <label style="font-weight:normal; cursor:pointer;">
-        <input type="radio" name="importSourceType" value="sheet" onchange="toggleImportSource()"> スプレッドシート内の原本シート
-      </label>
-    </div>
-
-    <div id="source-file-group" class="form-group">
-      <label for="fileInput">3. 取込ファイル</label>
+    <div class="form-group">
+      <label for="fileInput">2. ファイル</label>
       <input type="file" id="fileInput" name="file" accept=".csv,.xlsx,.xls" onchange="onFileSelected(this)">
       <div id="fileNameDisplay" class="file-name-display"></div>
-    </div>
-
-    <div id="source-sheet-group" class="form-group" style="display:none;">
-      <label for="existingSheetSelect">3. 取込対象の原本シート</label>
-      <select id="existingSheetSelect">
-        <option value="">-- シートを選択してください --</option>
-      </select>
     </div>
 
     <div class="form-group" style="margin-top: 20px;">
@@ -317,19 +300,6 @@
             sel.appendChild(opt);
           });
         }
-
-        const sheetSel = document.getElementById('existingSheetSelect');
-        if (sheetSel) {
-          sheetSel.innerHTML = '<option value="">-- シートを選択してください --</option>';
-          if (res.existingSheets && res.existingSheets.length > 0) {
-            res.existingSheets.forEach(s => {
-              const opt = document.createElement('option');
-              opt.value = s.sheetName;
-              opt.textContent = s.sheetName;
-              sheetSel.appendChild(opt);
-            });
-          }
-        }
         hideLoading();
       })
       .withFailureHandler(err => {
@@ -347,17 +317,6 @@
     document.getElementById('loading').style.display = 'none';
   }
 
-  function toggleImportSource() {
-    const sourceType = document.querySelector('input[name="importSourceType"]:checked').value;
-    if (sourceType === 'file') {
-      document.getElementById('source-file-group').style.display = 'block';
-      document.getElementById('source-sheet-group').style.display = 'none';
-    } else {
-      document.getElementById('source-file-group').style.display = 'none';
-      document.getElementById('source-sheet-group').style.display = 'block';
-    }
-  }
-
   function onFileSelected(input) {
     const display = document.getElementById('fileNameDisplay');
     if (input.files && input.files[0]) {
@@ -371,37 +330,26 @@
 
   function startImport() {
     const companyCode = document.getElementById('companyCode').value;
+    const fileInput = document.getElementById('fileInput');
+
     if (!companyCode) {
       alert("対象路線便会社を選択してください。");
       return;
     }
 
-    const sourceType = document.querySelector('input[name="importSourceType"]:checked').value;
-
-    if (sourceType === 'file') {
-      const fileInput = document.getElementById('fileInput');
-      if (!fileInput.files || fileInput.files.length === 0) {
-        alert("ファイルを選択してください。");
-        return;
-      }
-      showLoading("ファイル解析中...");
-      const formElement = document.getElementById('importForm');
-      google.script.run
-        .withSuccessHandler(onImportSuccess)
-        .withFailureHandler(onImportFailure)
-        .apiProcessFile(formElement);
-    } else {
-      const sheetName = document.getElementById('existingSheetSelect').value;
-      if (!sheetName) {
-        alert("取込対象のシートを選択してください。");
-        return;
-      }
-      showLoading("シート解析中...");
-      google.script.run
-        .withSuccessHandler(onImportSuccess)
-        .withFailureHandler(onImportFailure)
-        .apiProcessExistingSheet(sheetName, companyCode);
+    if (!fileInput.files || fileInput.files.length === 0) {
+      alert("ファイルを選択してください。");
+      return;
     }
+
+    showLoading("ファイル解析中...");
+    
+    const formElement = document.getElementById('importForm');
+    
+    google.script.run
+      .withSuccessHandler(onImportSuccess)
+      .withFailureHandler(onImportFailure)
+      .apiProcessFile(formElement);
   }
 
   function onImportFailure(err) {

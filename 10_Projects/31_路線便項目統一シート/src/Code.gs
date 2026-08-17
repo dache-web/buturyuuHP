@@ -5,6 +5,7 @@ function onOpen(e) {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu("路線便データ取込・標準化")
     .addItem("【復旧版】ファイルから取り込む", "showFileImportDialog")
+    .addItem("【復旧版】スプレッドシートから取り込む", "showExistingSheetImportDialog")
     .addItem("CSV・Excelデータを取り込む", "importCsvExcel")
     .addItem("項目役割マスタ", "openRoleMaster")
     .addSeparator()
@@ -33,6 +34,14 @@ function onOpen(e) {
     .addSeparator()
     .addItem("システム初期設定", "setup")
     .addToUi();
+}
+
+function showExistingSheetImportDialog() {
+  const html = HtmlService.createHtmlOutputFromFile('ExistingSheetImportDialog')
+    .setWidth(850)
+    .setHeight(650)
+    .setTitle('路線便データ取込（既存シート）');
+  SpreadsheetApp.getUi().showModalDialog(html, '路線便データ取込（既存シート）');
 }
 
 /**
