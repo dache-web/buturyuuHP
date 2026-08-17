@@ -352,7 +352,8 @@ class RawDataController {
       targetCompanyName = companyCode;
     }
 
-    const companyMappingSheetName = `${targetCompanyName}_マッピング`;
+    const timeStampStr = Utilities.formatDate(now, tz, "yyyyMMdd_HHmm");
+    const companyMappingSheetName = `${targetCompanyName}_${timeStampStr}_マッピング`;
     console.log("[MAPPING_OUTPUT] companyName=", targetCompanyName);
     console.log("[MAPPING_OUTPUT] sheetName=", companyMappingSheetName);
     console.log("[MAPPING_OUTPUT] rowCount=", standardizedRows ? standardizedRows.length : 0);

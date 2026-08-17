@@ -28,8 +28,20 @@ class CsvExportService {
       }
     }
 
-    const mappingSheetName = `${companyName}_マッピング`;
-    const mappingSheet = ss.getSheetByName(mappingSheetName);
+    // ＜会社名＞_YYYYMMDD_HHmm_マッピング シート（最新）の自動特定
+    const sheets = ss.getSheets();
+    let mappingSheet = null;
+    let mappingSheetName = "";
+
+    const candidateSheets = sheets.filter(s => s.getName().includes(companyName) && s.getName().endsWith("_マッピング"));
+    if (candidateSheets.length > 0) {
+      candidateSheets.sort((a, b) => b.getName().localeCompare(a.getName()));
+      mappingSheet = candidateSheets[0];
+      mappingSheetName = mappingSheet.getName();
+    } else {
+      mappingSheetName = `${companyName}_マッピング`;
+      mappingSheet = ss.getSheetByName(mappingSheetName);
+    }
 
     // ＜会社名＞_マッピング シートが存在する場合は画面と100%一致するCSVを直接生成
     if (mappingSheet && mappingSheet.getLastRow() > 1) {
