@@ -548,8 +548,9 @@
     
     selects.forEach(sel => {
       const val = sel.value;
-      if (val && val !== "未使用" && val !== "-- 未選択 --") {
-        counts[val] = (counts[val] || 0) + 1;
+      if (val && val !== "使用しない" && val !== "未使用" && val !== "-- 未選択 --") {
+        const cleanVal = val.replace(/【結合】$/, '');
+        counts[cleanVal] = (counts[cleanVal] || 0) + 1;
       }
     });
 
@@ -559,8 +560,14 @@
       const joinDiv = document.getElementById(`join_${idx}`);
       
       if (joinDiv) {
-        if (val && val !== "未使用" && val !== "-- 未選択 --" && val !== "実績運賃" && counts[val] > 1) {
-          joinDiv.style.display = "block";
+        if (val && val !== "使用しない" && val !== "未使用" && val !== "-- 未選択 --") {
+          const cleanVal = val.replace(/【結合】$/, '');
+          const isExplicitJoin = val.endsWith("【結合】");
+          if (isExplicitJoin || counts[cleanVal] > 1) {
+            joinDiv.style.display = "block";
+          } else {
+            joinDiv.style.display = "none";
+          }
         } else {
           joinDiv.style.display = "none";
         }
@@ -609,6 +616,15 @@
         opt.textContent = field;
         if (field === pred.commonField) opt.selected = true;
         select.appendChild(opt);
+
+        if (field === "届け先名称" || field === "届け先住所") {
+          const joinField = field + "【結合】";
+          const optJoin = document.createElement('option');
+          optJoin.value = joinField;
+          optJoin.textContent = joinField;
+          if (pred.commonField === joinField) optJoin.selected = true;
+          select.appendChild(optJoin);
+        }
       });
       tdSelect.appendChild(select);
 
@@ -655,24 +671,10 @@
   }
 
   function validateRequiredFields() {
-    const selects = document.querySelectorAll('.common-field-select');
-    const selectedFields = Array.from(selects).map(s => s.value);
-    const requiredFields = serverData.requiredFields || ["出荷日", "届け先名称", "実績運賃"];
-    
-    const missing = requiredFields.filter(rf => !selectedFields.includes(rf));
-    const isCalc = document.getElementById('calcMethod_calc').checked;
-    
     const warningDiv = document.getElementById('mapping-validation-warning');
     const btnConfirm = document.getElementById('btn-confirm-mapping');
-
-    if (missing.length > 0 && !isCalc) {
-      warningDiv.textContent = "※必須項目（" + missing.join(", ") + "）のマッピングが不足しています。";
-      warningDiv.style.display = "block";
-      btnConfirm.disabled = true;
-    } else {
-      warningDiv.style.display = "none";
-      btnConfirm.disabled = false;
-    }
+    if (warningDiv) warningDiv.style.display = "none";
+    if (btnConfirm) btnConfirm.disabled = false;
   }
 
   function confirmMapping() {
@@ -681,15 +683,17 @@
     
     selects.forEach((sel) => {
       const idx = sel.dataset.originalIndex;
-      const val = sel.value;
+      const rawVal = sel.value;
       const joinOrderInput = document.getElementById(`joinOrder_${idx}`);
       const joinMethodSelect = document.getElementById(`joinMethod_${idx}`);
+      const cleanVal = rawVal ? rawVal.replace(/【結合】$/, '') : '';
 
       finalMapping.push({
         originalIndex: Number(idx),
         originalName: sel.dataset.originalName,
-        commonField: val,
-        joinGroupId: val ? `JOIN_${val}` : "",
+        commonField: cleanVal,
+        uiField: rawVal,
+        joinGroupId: cleanVal ? `JOIN_${cleanVal}` : "",
         joinOrder: joinOrderInput ? Number(joinOrderInput.value) : (Number(idx) + 1),
         joinMethod: joinMethodSelect ? joinMethodSelect.value : "半角スペース"
       });
