@@ -638,7 +638,7 @@ targetCompanyName = companyCode;
     const sortedMapping = [...mapping].sort((a, b) => (a.joinOrder || 1) - (b.joinOrder || 1));
     
     sortedMapping.forEach(m => {
-      if (m.commonField === "使用しない" || m.commonField === "") return;
+      if (m.commonField === "使用しない" || m.commonField === "未使用" || m.commonField === "-- 未選択 --" || m.commonField === "") return;
       
       let val = row[m.originalIndex];
       if (val === null || val === undefined) val = "";

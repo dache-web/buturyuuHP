@@ -542,6 +542,32 @@
       .apiPreviewCalcFreight(currentSession.sampleData, calcRuleArray);
   }
 
+  function checkMultiSelect() {
+    const selects = document.querySelectorAll('.common-field-select');
+    const counts = {};
+    
+    selects.forEach(sel => {
+      const val = sel.value;
+      if (val && val !== "未使用" && val !== "-- 未選択 --") {
+        counts[val] = (counts[val] || 0) + 1;
+      }
+    });
+
+    selects.forEach(sel => {
+      const idx = sel.dataset.originalIndex;
+      const val = sel.value;
+      const joinDiv = document.getElementById(`join_${idx}`);
+      
+      if (joinDiv) {
+        if (val && val !== "未使用" && val !== "-- 未選択 --" && val !== "実績運賃" && counts[val] > 1) {
+          joinDiv.style.display = "block";
+        } else {
+          joinDiv.style.display = "none";
+        }
+      }
+    });
+  }
+
   function renderMappingTable(predictions, sampleData) {
     const tbody = document.getElementById('mapping-body');
     tbody.innerHTML = '';
@@ -570,6 +596,7 @@
       select.dataset.originalIndex = index;
       select.dataset.originalName = pred.originalName;
       select.onchange = function() {
+        checkMultiSelect();
         validateRequiredFields();
         if (document.getElementById('calcMethod_calc').checked) {
           renderCalcItemsList();
@@ -584,6 +611,27 @@
         select.appendChild(opt);
       });
       tdSelect.appendChild(select);
+
+      // 結合設定UIの追加
+      const joinDiv = document.createElement('div');
+      joinDiv.className = "join-settings";
+      joinDiv.id = `join_${index}`;
+      joinDiv.style.display = "none";
+      joinDiv.innerHTML = `
+        <label style="font-size:0.75rem; color:#4a5568; display:block; margin-top:4px; margin-bottom:2px;">※複数項目が同一標準項目へ指定されています。結合順と方法を指定してください。</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span style="font-size:0.8rem;">順序:</span>
+          <input type="number" id="joinOrder_${index}" value="${pred.joinOrder || (index + 1)}" style="width:50px; padding:2px 4px; font-size:0.8rem;" title="結合順序">
+          <span style="font-size:0.8rem;">方法:</span>
+          <select id="joinMethod_${index}" style="width:auto; padding:2px 4px; font-size:0.8rem;">
+            <option value="半角スペース" ${(!pred.joinMethod || pred.joinMethod === "半角スペース") ? "selected" : ""}>半角スペース</option>
+            <option value="全角スペース" ${pred.joinMethod === "全角スペース" ? "selected" : ""}>全角スペース</option>
+            <option value="区切りなし" ${pred.joinMethod === "区切りなし" ? "selected" : ""}>区切りなし</option>
+          </select>
+        </div>
+      `;
+      tdSelect.appendChild(joinDiv);
+
       tr.appendChild(tdSelect);
 
       const tdConf = document.createElement('td');
@@ -602,6 +650,7 @@
       tbody.appendChild(tr);
     });
 
+    checkMultiSelect();
     validateRequiredFields();
   }
 
@@ -630,11 +679,19 @@
     const selects = document.querySelectorAll('.common-field-select');
     const finalMapping = [];
     
-    selects.forEach((sel, idx) => {
+    selects.forEach((sel) => {
+      const idx = sel.dataset.originalIndex;
+      const val = sel.value;
+      const joinOrderInput = document.getElementById(`joinOrder_${idx}`);
+      const joinMethodSelect = document.getElementById(`joinMethod_${idx}`);
+
       finalMapping.push({
-        originalIndex: idx,
+        originalIndex: Number(idx),
         originalName: sel.dataset.originalName,
-        commonField: sel.value
+        commonField: val,
+        joinGroupId: val ? `JOIN_${val}` : "",
+        joinOrder: joinOrderInput ? Number(joinOrderInput.value) : (Number(idx) + 1),
+        joinMethod: joinMethodSelect ? joinMethodSelect.value : "半角スペース"
       });
     });
 
