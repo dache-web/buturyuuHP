@@ -543,35 +543,12 @@
   }
 
   function checkMultiSelect() {
+    // 各項目は個別の標準項目（届け先名称1, 届け先名称2, 住所1, 住所2, 住所3 等）として設定されるため結合設定UIは非表示
     const selects = document.querySelectorAll('.common-field-select');
-    const counts = {};
-    
-    selects.forEach(sel => {
-      const val = sel.value;
-      if (val && val !== "使用しない" && val !== "未使用" && val !== "-- 未選択 --") {
-        const cleanVal = val.replace(/【結合】$/, '');
-        counts[cleanVal] = (counts[cleanVal] || 0) + 1;
-      }
-    });
-
     selects.forEach(sel => {
       const idx = sel.dataset.originalIndex;
-      const val = sel.value;
       const joinDiv = document.getElementById(`join_${idx}`);
-      
-      if (joinDiv) {
-        if (val && val !== "使用しない" && val !== "未使用" && val !== "-- 未選択 --") {
-          const cleanVal = val.replace(/【結合】$/, '');
-          const isExplicitJoin = val.endsWith("【結合】");
-          if (isExplicitJoin || counts[cleanVal] > 1) {
-            joinDiv.style.display = "block";
-          } else {
-            joinDiv.style.display = "none";
-          }
-        } else {
-          joinDiv.style.display = "none";
-        }
-      }
+      if (joinDiv) joinDiv.style.display = "none";
     });
   }
 
@@ -616,37 +593,8 @@
         opt.textContent = field;
         if (field === pred.commonField) opt.selected = true;
         select.appendChild(opt);
-
-        if (field === "届け先名称" || field === "届け先住所") {
-          const joinField = field + "【結合】";
-          const optJoin = document.createElement('option');
-          optJoin.value = joinField;
-          optJoin.textContent = joinField;
-          if (pred.commonField === joinField) optJoin.selected = true;
-          select.appendChild(optJoin);
-        }
       });
       tdSelect.appendChild(select);
-
-      // 結合設定UIの追加
-      const joinDiv = document.createElement('div');
-      joinDiv.className = "join-settings";
-      joinDiv.id = `join_${index}`;
-      joinDiv.style.display = "none";
-      joinDiv.innerHTML = `
-        <label style="font-size:0.75rem; color:#4a5568; display:block; margin-top:4px; margin-bottom:2px;">※複数項目が同一標準項目へ指定されています。結合順と方法を指定してください。</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <span style="font-size:0.8rem;">順序:</span>
-          <input type="number" id="joinOrder_${index}" value="${pred.joinOrder || (index + 1)}" style="width:50px; padding:2px 4px; font-size:0.8rem;" title="結合順序">
-          <span style="font-size:0.8rem;">方法:</span>
-          <select id="joinMethod_${index}" style="width:auto; padding:2px 4px; font-size:0.8rem;">
-            <option value="半角スペース" ${(!pred.joinMethod || pred.joinMethod === "半角スペース") ? "selected" : ""}>半角スペース</option>
-            <option value="全角スペース" ${pred.joinMethod === "全角スペース" ? "selected" : ""}>全角スペース</option>
-            <option value="区切りなし" ${pred.joinMethod === "区切りなし" ? "selected" : ""}>区切りなし</option>
-          </select>
-        </div>
-      `;
-      tdSelect.appendChild(joinDiv);
 
       tr.appendChild(tdSelect);
 
@@ -683,19 +631,15 @@
     
     selects.forEach((sel) => {
       const idx = sel.dataset.originalIndex;
-      const rawVal = sel.value;
-      const joinOrderInput = document.getElementById(`joinOrder_${idx}`);
-      const joinMethodSelect = document.getElementById(`joinMethod_${idx}`);
-      const cleanVal = rawVal ? rawVal.replace(/【結合】$/, '') : '';
+      const val = sel.value;
 
       finalMapping.push({
         originalIndex: Number(idx),
         originalName: sel.dataset.originalName,
-        commonField: cleanVal,
-        uiField: rawVal,
-        joinGroupId: cleanVal ? `JOIN_${cleanVal}` : "",
-        joinOrder: joinOrderInput ? Number(joinOrderInput.value) : (Number(idx) + 1),
-        joinMethod: joinMethodSelect ? joinMethodSelect.value : "半角スペース"
+        commonField: val,
+        joinGroupId: "",
+        joinOrder: Number(idx) + 1,
+        joinMethod: "区切りなし"
       });
     });
 

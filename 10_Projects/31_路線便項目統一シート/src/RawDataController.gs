@@ -4,15 +4,15 @@
 class RawDataController {
   
   /**
-   * 共通項目名から【結合】などのサフィックスを除去した実標準項目名を返します。
+   * 共通項目名を取得します（正規化が必要な場合はここに記述）
    */
   static _cleanCommonField(field) {
     if (!field) return "";
-    return String(field).replace(/【結合】$/, "").trim();
+    return String(field).trim();
   }
 
   /**
-   * マッピング情報を保存し、データを固定25列の標準化フォーマットへ変換して保存します。
+   * マッピング情報を保存し、データを固定ヘッダーの標準化フォーマットへ変換して保存します。
    * @param {object} payload { companyCode, fileName, formatSignature, formatName, mapping, calcMethod, calcRule, rawData }
    */
   static processStandardization(payload) {
@@ -101,7 +101,7 @@ class RawDataController {
     }
 
     // 3. マッピングの単一値項目チェック
-    const SINGLE_VALUE_FIELDS = ["出荷日", "個数", "重量", "サイズ", "管理番号"];
+    const SINGLE_VALUE_FIELDS = ["出荷日", "届け先名称1", "届け先名称2", "住所1", "住所2", "住所3", "個数", "重量", "サイズ", "管理番号"];
     const counts = {};
     const usedFieldsSet = new Set();
 
@@ -115,12 +115,12 @@ class RawDataController {
 
     for (const f of SINGLE_VALUE_FIELDS) {
       if (counts[f] > 1) {
-        throw new Error(`${f}に複数の元項目が設定されています。システムでは結合が許可されていません。`);
+        throw new Error(`${f}に複数の元項目が設定されています。システムでは重複マッピングが許可されていません。`);
       }
     }
 
     if (calcMethod === "直接取得" && counts["実績運賃"] > 1) {
-      throw new Error(`実績運賃に複数の元項目が設定されています。システムでは結合が許可されていません。`);
+      throw new Error(`実績運賃に複数の元項目が設定されています。システムでは重複マッピングが許可されていません。`);
     }
     
     // 3.5 サーチャージ項目の未設定チェック
@@ -831,10 +831,38 @@ class RawDataController {
       }
     }
 
-    if (usedFieldsSet && usedFieldsSet.has("届け先名称")) {
-      if (!stdRow[fixedHeaders.indexOf("届け先名称")]) {
+    if (usedFieldsSet && usedFieldsSet.has("届け先名称1")) {
+      if (!stdRow[fixedHeaders.indexOf("届け先名称1")]) {
          hasError = true;
-         errorMsgs.push("届け先名称が未設定");
+         errorMsgs.push("届け先名称1が未設定");
+      }
+    }
+
+    if (usedFieldsSet && usedFieldsSet.has("届け先名称2")) {
+      if (!stdRow[fixedHeaders.indexOf("届け先名称2")]) {
+         hasError = true;
+         errorMsgs.push("届け先名称2が未設定");
+      }
+    }
+
+    if (usedFieldsSet && usedFieldsSet.has("住所1")) {
+      if (!stdRow[fixedHeaders.indexOf("住所1")]) {
+         hasError = true;
+         errorMsgs.push("住所1が未設定");
+      }
+    }
+
+    if (usedFieldsSet && usedFieldsSet.has("住所2")) {
+      if (!stdRow[fixedHeaders.indexOf("住所2")]) {
+         hasError = true;
+         errorMsgs.push("住所2が未設定");
+      }
+    }
+
+    if (usedFieldsSet && usedFieldsSet.has("住所3")) {
+      if (!stdRow[fixedHeaders.indexOf("住所3")]) {
+         hasError = true;
+         errorMsgs.push("住所3が未設定");
       }
     }
 
