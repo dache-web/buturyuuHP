@@ -101,7 +101,7 @@ class RawDataController {
     }
 
     // 3. マッピングの単一値項目チェック
-    const SINGLE_VALUE_FIELDS = ["出荷日", "届け先名称1", "届け先名称2", "住所1", "住所2", "住所3", "着地名称", "到着点名称", "個数", "重量", "サイズ", "管理番号"];
+    const SINGLE_VALUE_FIELDS = ["出荷日", "届け先名称1", "届け先名称2", "住所1", "住所2", "住所3", "個数", "重量", "サイズ", "管理番号"];
     const counts = {};
     const usedFieldsSet = new Set();
 
@@ -794,35 +794,84 @@ class RawDataController {
     const monthIdx = fixedHeaders.indexOf("対象年月");
     let shipDateVal = stdRow[shipDateIdx];
     
-    if (shipDateVal) {
-      try {
-         let strVal = String(shipDateVal).trim();
-         if (/^\d{8}$/.test(strVal)) {
-           const y = strVal.substring(0, 4);
-           const m = strVal.substring(4, 6);
-           const d = strVal.substring(6, 8);
-           stdRow[shipDateIdx] = `${y}-${m}-${d}`;
-           stdRow[monthIdx] = `${y}-${m}`;
-         } else {
-           let d = new Date(shipDateVal);
-           if (!isNaN(d.getTime())) {
-             stdRow[shipDateIdx] = Utilities.formatDate(d, tz, "yyyy-MM-dd");
-             stdRow[monthIdx] = Utilities.formatDate(d, tz, "yyyy-MM");
-           } else if (!isNaN(Number(shipDateVal))) {
-             d = new Date(Math.round((Number(shipDateVal) - 25569) * 86400 * 1000));
+    if (usedFieldsSet && usedFieldsSet.has("出荷日")) {
+      if (shipDateVal) {
+        try {
+           let strVal = String(shipDateVal).trim();
+           if (/^\d{8}$/.test(strVal)) {
+             const y = strVal.substring(0, 4);
+             const m = strVal.substring(4, 6);
+             const d = strVal.substring(6, 8);
+             stdRow[shipDateIdx] = `${y}-${m}-${d}`;
+             stdRow[monthIdx] = `${y}-${m}`;
+           } else {
+             let d = new Date(shipDateVal);
              if (!isNaN(d.getTime())) {
                stdRow[shipDateIdx] = Utilities.formatDate(d, tz, "yyyy-MM-dd");
                stdRow[monthIdx] = Utilities.formatDate(d, tz, "yyyy-MM");
+             } else if (!isNaN(Number(shipDateVal))) {
+               d = new Date(Math.round((Number(shipDateVal) - 25569) * 86400 * 1000));
+               if (!isNaN(d.getTime())) {
+                 stdRow[shipDateIdx] = Utilities.formatDate(d, tz, "yyyy-MM-dd");
+                 stdRow[monthIdx] = Utilities.formatDate(d, tz, "yyyy-MM");
+               } else {
+                 throw new Error();
+               }
              } else {
                throw new Error();
              }
-           } else {
-             throw new Error();
            }
-         }
-      } catch(e) {
+        } catch(e) {
+           hasError = true;
+           errorMsgs.push("出荷日の形式エラー");
+        }
+      } else {
          hasError = true;
-         errorMsgs.push("出荷日の形式エラー");
+         errorMsgs.push("出荷日が未設定");
+      }
+    }
+
+    if (usedFieldsSet && usedFieldsSet.has("届け先名称1")) {
+      if (!stdRow[fixedHeaders.indexOf("届け先名称1")]) {
+         hasError = true;
+         errorMsgs.push("届け先名称1が未設定");
+      }
+    }
+
+    if (usedFieldsSet && usedFieldsSet.has("届け先名称2")) {
+      if (!stdRow[fixedHeaders.indexOf("届け先名称2")]) {
+         hasError = true;
+         errorMsgs.push("届け先名称2が未設定");
+      }
+    }
+
+    if (usedFieldsSet && usedFieldsSet.has("住所1")) {
+      if (!stdRow[fixedHeaders.indexOf("住所1")]) {
+         hasError = true;
+         errorMsgs.push("住所1が未設定");
+      }
+    }
+
+    if (usedFieldsSet && usedFieldsSet.has("住所2")) {
+      if (!stdRow[fixedHeaders.indexOf("住所2")]) {
+         hasError = true;
+         errorMsgs.push("住所2が未設定");
+      }
+    }
+
+    if (usedFieldsSet && usedFieldsSet.has("住所3")) {
+      if (!stdRow[fixedHeaders.indexOf("住所3")]) {
+         hasError = true;
+         errorMsgs.push("住所3が未設定");
+      }
+    }
+
+    if (usedFieldsSet && usedFieldsSet.has("実績運賃") && calcMethod === "直接取得") {
+      const freightVal = stdRow[fixedHeaders.indexOf("実績運賃")];
+      const isBlankFreight = freightVal === "" || freightVal === null || freightVal === undefined;
+      if (isBlankFreight) {
+         hasError = true;
+         errorMsgs.push("実績運賃が未設定");
       }
     }
 

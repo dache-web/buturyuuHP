@@ -627,52 +627,6 @@
 
   function confirmMapping() {
     const selects = document.querySelectorAll('.common-field-select');
-    const counts = {};
-    const SINGLE_VALUE_FIELDS = ["出荷日", "届け先名称1", "届け先名称2", "住所1", "住所2", "住所3", "着地名称", "到着点名称", "個数", "重量", "サイズ", "管理番号"];
-    const isCalc = document.getElementById('calcMethod_calc').checked;
-
-    // 前回の赤枠・赤背景のハイライトをクリア
-    document.querySelectorAll('.mapping-error-row').forEach(el => el.classList.remove('mapping-error-row'));
-    
-    selects.forEach(sel => {
-      const val = sel.value;
-      if (val && val !== "使用しない" && val !== "未使用" && val !== "-- 未選択 --") {
-        counts[val] = (counts[val] || 0) + 1;
-      }
-    });
-
-    let hasConflict = false;
-    let firstConflictElement = null;
-
-    selects.forEach(sel => {
-      const val = sel.value;
-      const tr = sel.closest('tr');
-      
-      let isError = false;
-      if (val && val !== "使用しない" && val !== "未使用" && val !== "-- 未選択 --") {
-        if (SINGLE_VALUE_FIELDS.includes(val) && counts[val] > 1) {
-          isError = true;
-        }
-        if (!isCalc && val === "実績運賃" && counts[val] > 1) {
-          isError = true;
-        }
-      }
-
-      if (isError) {
-        hasConflict = true;
-        if (tr) tr.classList.add('mapping-error-row');
-        if (!firstConflictElement && tr) firstConflictElement = tr;
-      }
-    });
-
-    if (hasConflict) {
-      alert("単一項目に複数の元項目が重複設定されています。赤枠の箇所を確認・修正してください。");
-      if (firstConflictElement) {
-        firstConflictElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-      return;
-    }
-
     const finalMapping = [];
     
     selects.forEach((sel) => {
