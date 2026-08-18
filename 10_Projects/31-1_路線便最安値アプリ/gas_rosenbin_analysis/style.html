@@ -1,0 +1,274 @@
+<style>
+  body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+    margin: 0;
+    padding: 15px;
+  }
+  
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  #header {
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 10px;
+  }
+  
+  h2 {
+    color: #2c3e50;
+    margin: 0 0 5px 0;
+    font-size: 24px;
+  }
+  
+  .subtitle {
+    color: #64748b;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  /* タブメニュー */
+  .tabs {
+    display: flex;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #cbd5e1;
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    color: #64748b;
+  }
+  .tab-btn.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+  }
+  .tab-content {
+    display: none;
+  }
+  .tab-content.active {
+    display: block;
+  }
+  
+  .card {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  
+  h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+    color: #475569;
+    border-left: 4px solid #3b82f6;
+    padding-left: 8px;
+  }
+
+  h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #475569;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+  }
+  
+  .form-control {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 14px;
+  }
+  
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 14px;
+  }
+  
+  .checkbox-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 5px;
+    background: #f8fafc;
+  }
+  
+  .checkbox-item {
+    padding: 8px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .checkbox-item:last-child {
+    border-bottom: none;
+  }
+  .checkbox-item label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin: 0;
+    font-size: 14px;
+  }
+  .checkbox-item input[type="checkbox"] {
+    margin-right: 8px;
+  }
+
+  .count-badge {
+    background-color: #e2e8f0;
+    color: #475569;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+  
+  .btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-primary {
+    background-color: #2563eb;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #1d4ed8;
+  }
+  
+  .btn:disabled {
+    background-color: #94a3b8;
+    cursor: not-allowed;
+  }
+  
+  .btn-block {
+    width: 100%;
+    display: block;
+    padding: 12px;
+    font-size: 16px;
+  }
+
+  /* ドラッグ＆ドロップ */
+  .drop-zone {
+    border: 2px dashed #94a3b8;
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    color: #64748b;
+    background: #f8fafc;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+  }
+  .drop-zone.dragover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #3b82f6;
+  }
+  .drop-zone button {
+    margin-top: 10px;
+    padding: 6px 12px;
+    background-color: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .company-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .company-list li {
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+  }
+  .company-list button {
+    padding: 5px 10px;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .company-list button:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  /* ステータスメッセージ */
+  .status-msg {
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    white-space: pre-wrap;
+  }
+  .status-msg.error {
+    color: #ef4444;
+  }
+  .status-msg.success {
+    color: #10b981;
+  }
+
+  /* ローディング */
+  .loading-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255,255,255,0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  .loading-text {
+    margin-top: 15px;
+    font-weight: bold;
+    color: #475569;
+  }
+</style>
