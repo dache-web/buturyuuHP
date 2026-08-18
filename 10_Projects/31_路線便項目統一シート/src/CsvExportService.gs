@@ -50,7 +50,7 @@ class CsvExportService {
       const errorFlagIdx = mHeaders.indexOf("エラー有無");
 
       let hasError = false;
-      const exportData = [CONFIG.STANDARDIZED_CSV_HEADERS];
+      const exportData = [mHeaders];
 
       for (let i = 1; i < mData.length; i++) {
         const row = mData[i];
@@ -58,7 +58,7 @@ class CsvExportService {
           hasError = true;
         }
         const formattedRow = [];
-        for (let col = 0; col < CONFIG.STANDARDIZED_CSV_HEADERS.length; col++) {
+        for (let col = 0; col < mHeaders.length; col++) {
           let cell = row[col];
           if (cell instanceof Date) {
             cell = Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd");

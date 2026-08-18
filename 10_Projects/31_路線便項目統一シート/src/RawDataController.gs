@@ -463,7 +463,7 @@ class RawDataController {
     }
     console.timeEnd("[PERF] Def Sheet Save");
 
-    // 6.4 会社別マッピングシート (＜会社名＞_YYYYMMDD_HHmm_マッピング) への成果物全件表示書き込み
+    // 6.4 会社別マッピングシート (＜会社名＞_YYYYMMDD_HHmm_マッピング) への成果物表示書き込み（未使用の標準項目は出力除外）
     console.time("[PERF] Mapping Sheet Save");
     try {
       let mappingSheet = ss.getSheetByName(companyMappingSheetName);
@@ -473,11 +473,27 @@ class RawDataController {
         mappingSheet.clearContents();
       }
 
-      const csvHeaders = CONFIG.STANDARDIZED_CSV_HEADERS;
-      const mappingOutputRows = [csvHeaders].concat(standardizedRows);
+      const allHeaders = CONFIG.STANDARDIZED_CSV_HEADERS;
+      const systemFields = ["標準化データID", "原本データID", "対象年月", "路線便会社コード", "路線便会社名", "有効フラグ", "エラー有無", "特記事項", "燃料サーチャージ", "サーチャージ取扱区分"];
+      
+      const activeOutputHeaders = [];
+      const activeColIndices = [];
+
+      allHeaders.forEach((h, idx) => {
+        if (systemFields.includes(h) || (usedFieldsSet && usedFieldsSet.has(h))) {
+          activeOutputHeaders.push(h);
+          activeColIndices.push(idx);
+        }
+      });
+
+      const mappingFilteredRows = standardizedRows.map(row => {
+        return activeColIndices.map(colIdx => row[colIdx]);
+      });
+
+      const mappingOutputRows = [activeOutputHeaders].concat(mappingFilteredRows);
       
       if (mappingOutputRows.length > 0) {
-        mappingSheet.getRange(1, 1, mappingOutputRows.length, csvHeaders.length).setValues(mappingOutputRows);
+        mappingSheet.getRange(1, 1, mappingOutputRows.length, activeOutputHeaders.length).setValues(mappingOutputRows);
       }
     } catch (err) {
       console.error("[MAPPING_OUTPUT] ERROR", err);
