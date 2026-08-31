@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>スプレッドシート管理基盤 | 配車・運行管理アプリ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #0F172A;
+      --bg-card: #1E293B;
+      --bg-card-hover: #334155;
+      --accent: #38BDF8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --text-main: #F8FAFC;
+      --text-sub: #94A3B8;
+      --border: #334155;
+      --badge-ok: #22C55E;
+      --badge-conditional: #F59E0B;
+      --badge-readonly: #3B82F6;
+      --badge-dont: #EF4444;
+      --badge-auto: #64748B;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans JP', 'Inter', sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .title-group h1 { font-size: 1.5rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
+    .badge-step { background: rgba(56, 189, 248, 0.2); color: var(--accent); border: 1px solid var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
+    .meta-info { font-size: 0.85rem; color: var(--text-sub); }
+
+    .nav-tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .tab-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-sub);
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover, .tab-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      font-weight: 700;
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .guide-box {
+      background: #1e1b4b;
+      border: 1px solid #4338ca;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+    .guide-box h3 { color: #818cf8; font-size: 1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .guide-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+    .guide-step-card { background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border-left: 3px solid #818cf8; font-size: 0.85rem; }
+    .guide-step-card strong { color: #c7d2fe; display: block; margin-bottom: 4px; }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .sheet-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .sheet-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .sheet-no { font-size: 0.75rem; color: var(--accent); font-weight: 700; font-family: 'Inter'; }
+    .sheet-name { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-top: 2px; }
+    .op-badge {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .op-OK_TOUCH { background-color: var(--badge-ok); }
+    .op-OK_CONDITIONAL { background-color: var(--badge-conditional); }
+    .op-READ_ONLY { background-color: var(--badge-readonly); }
+    .op-DO_NOT_TOUCH { background-color: var(--badge-dont); }
+    .op-AUTO_MANAGED { background-color: var(--badge-auto); }
+
+    .card-body { font-size: 0.875rem; color: var(--text-sub); margin-bottom: 16px; min-height: 48px; }
+    .card-meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: 0.75rem; }
+    .meta-tag { background: #0F172A; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); color: #CBD5E1; }
+
+    .table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; }
+    th { background: #0F172A; padding: 14px 16px; color: var(--text-sub); font-weight: 600; border-bottom: 1px solid var(--border); }
+    td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg-card-hover); }
+
+    .search-box {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+    .search-box:focus { outline: none; border-color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title-group">
+      <h1>配車・運行管理アプリ <span class="badge-step">第0工程 スプレッドシート管理基盤</span></h1>
+    </div>
+    <div class="meta-info">
+      参照計画書: <strong>PLAN-02 (実装前計画書_修正版02)</strong> | スキーマ: <strong>v0.1.0</strong>
+    </div>
+  </header>
+
+  <!-- 中学生でも分かる操作手順ガイド -->
+  <div class="guide-box">
+    <h3>💡 運行管理者様・検収担当者様への操作ガイド（実機確認手順）</h3>
+    <div class="guide-steps">
+      <div class="guide-step-card">
+        <strong>1. 何を開くか</strong>
+        作成されたスプレッドシート（または本確認画面）を開きます。
+      </div>
+      <div class="guide-step-card">
+        <strong>2. 何を見るか</strong>
+        全14個の管理シート（00〜06, 09〜15）の目的・色分け操作区分・設定内容を確認します。
+      </div>
+      <div class="guide-step-card">
+        <strong>3. どこは触って良いか</strong>
+        「触ってOK」緑バッジの項目のみ直接編集が可能です。
+      </div>
+      <div class="guide-step-card">
+        <strong>4. どこは触ってはいけないか</strong>
+        「触らない」赤バッジ・「自動管理」グレーバッジはシステムが管理するため手動操作禁止です。
+      </div>
+      <div class="guide-step-card">
+        <strong>5. 成功の基準</strong>
+        全14シートが揃っており、初心者向けの項目説明が記載されていれば検収OKです。
+      </div>
+    </div>
+  </div>
+
+  <!-- タブ切替ナビゲーション -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="showTab('cards')">01. 全14管理シート一覧 (カード)</button>
+    <button class="tab-btn" onclick="showTab('fields')">02. 項目定義台帳 (SYS_FIELDS)</button>
+    <button class="tab-btn" onclick="showTab('dependencies')">03. シート依存関係台帳 (SYS_DEPENDENCIES)</button>
+    <button class="tab-btn" onclick="showTab('features')">04. 機能管理台帳 (SYS_FEATURES)</button>
+    <button class="tab-btn" onclick="showTab('decisions')">15. 意思決定理由台帳 (PROJECT_DECISIONS)</button>
+  </div>
+
+  <input type="text" class="search-box" id="searchInput" placeholder="シート名、キー、項目名でリアルタイム検索..." oninput="filterContent()">
+
+  <!-- メインコンテンツ領域 -->
+  <div id="contentArea"></div>
+
+  <script>
+    let schemaData = null;
+
+    async function loadSchema() {
+      try {
+        const response = await fetch('./schema/sheets_definition.json');
+        schemaData = await response.json();
+        showTab('cards');
+      } catch(e) {
+        console.error('スキーマデータ読み込み失敗:', e);
+      }
+    }
+
+    function showTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      const container = document.getElementById('contentArea');
+      if (!schemaData) return;
+
+      if (tabName === 'cards') {
+        let html = '<div class="card-grid">';
+        schemaData.sheets.forEach(sheet => {
+          const opClass = 'op-' + sheet.operationType.replace(/ /g, '_');
+          const opLabel = sheet.columns.find(c => c.fieldKey === 'OperationType') ? sheet.operationType : sheet.operationType;
+          html += `
+            <div class="sheet-card" data-search="${sheet.sheetName} ${sheet.sheetKey} ${sheet.purpose}">
+              <div class="card-header">
+                <div>
+                  <div class="sheet-no">Key: ${sheet.sheetKey}</div>
+                  <div class="sheet-name">${sheet.sheetName}</div>
+                </div>
+                <span class="op-badge ${opClass}">${sheet.operationType}</span>
+              </div>
+              <div class="card-body">${sheet.purpose}</div>
+              <div class="card-meta">
+                <span class="meta-tag">分類: ${sheet.category}</span>
+                <span class="meta-tag">利用者: ${sheet.targetUser}</span>
+                <span class="meta-tag">項目数: ${sheet.columns.length}列</span>
+                ${sheet.isSsot ? '<span class="meta-tag" style="border-color:#38BDF8; color:#38BDF8;">SSoT</span>' : ''}
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      } else if (tabName === 'fields') {
+        const fieldsSheet = schemaData.sheets.find(s => s.sheetKey === 'SYS_FIELDS');
+        let html = '<div class="table-container"><table><thead><tr><th>対象シート</th><th>物理キー</th><th>項目名</th><th>データ型</th><th>コア項目</th><th>通常非公開</th><th>操作区分</th><th>初心者がわかる説明</th></tr></thead><tbody>';
+        fieldsSheet.initialData.forEach(row => {
+          html += `<tr data-search="${row[0]} ${row[1]} ${row[2]} ${row[9]}">
+            <td><strong>${row[0]}</strong></td>
+            <td><code>${row[1]}</code></td>
+            <td>${row[2]}</td>
+            <td>${row[4]}</td>
+            <td>${row[6] ? '固定コア' : '可変追加'}</td>
+            <td>${row[7] ? '🔒非公開' : '🌐公開'}</td>
+            <td><span class="op-badge op-${row[8].replace(/ /g, '_')}">${row[8]}</span></td>
+            <td>${row[9]}</td>
+          </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+      } else if (tabName === 'dependencies') {
+        const depSheet = schemaData.sheets.find(s => s.sheetKey === 'SYS_DEPENDENCIES');
+        let html = '<div class="table-container"><table><thead><tr><th>参照元</th><th>参照先</th><th>使用目的</th><th>関連キー</th><th>必須/任意</th><th>使用機能</th></tr></thead><tbody>';
+        depSheet.initialData.forEach(row => {
+          html += `<tr data-search="${row[0]} ${row[1]} ${row[2]} ${row[5]}">
+            <td><code>${row[0]}</code></td>
+            <td><code>${row[1]}</code></td>
+            <td>${row[2]}</td>
+            <td><code>${row[3]}</code></td>
+            <td>${row[4]}</td>
+            <td>${row[5]}</td>
+          </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+      } else if (tabName === 'features') {
+        const featSheet = schemaData.sheets.find(s => s.sheetKey === 'SYS_FEATURES');
+        let html = '<div class="table-container"><table><thead><tr><th>機能Key</th><th>機能名</th><th>画面名</th><th>使用シート</th><th>アクセス</th><th>優先度</th></tr></thead><tbody>';
+        featSheet.initialData.forEach(row => {
+          html += `<tr data-search="${row[0]} ${row[1]} ${row[2]} ${row[3]}">
+            <td><code>${row[0]}</code></td>
+            <td>${row[1]}</td>
+            <td>${row[2]}</td>
+            <td><code>${row[3]}</code></td>
+            <td>${row[4]}</td>
+            <td>${row[7]}</td>
+          </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+      } else if (tabName === 'decisions') {
+        const decSheet = schemaData.sheets.find(s => s.sheetKey === 'PROJECT_DECISIONS');
+        let html = '<div class="table-container"><table><thead><tr><th>決定ID</th><th>決定内容タイトル</th><th>決定内容</th><th>決定理由 (Why)</th><th>関連文書</th></tr></thead><tbody>';
+        decSheet.initialData.forEach(row => {
+          html += `<tr data-search="${row[0]} ${row[1]} ${row[2]} ${row[3]}">
+            <td><code>${row[0]}</code></td>
+            <td><strong>${row[1]}</strong></td>
+            <td>${row[2]}</td>
+            <td style="color:#38BDF8;">${row[3]}</td>
+            <td>${row[4]}</td>
+          </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+      }
+    }
+
+    function filterContent() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      document.querySelectorAll('[data-search]').forEach(el => {
+        const text = el.getAttribute('data-search').toLowerCase();
+        el.style.display = text.includes(query) ? '' : 'none';
+      });
+    }
+
+    loadSchema();
+  </script>
+</body>
+</html>
