@@ -1,18 +1,110 @@
 /**
  * ============================================================================
- * 文書番号：TOOL-01 / スプレッドシート自動構築スクリプト
+ * 文書番号：TOOL-01 / スプレッドシート自動構築＆安全更新スクリプト
  * ファイル名：SetupSpreadsheet.gs
- * 役割：第0工程 スプレッドシート管理基盤（全14シート）の自動初期化・書式・初期データセットアップ
- * 対応指示書：FIX-12_UX_FIX (実機検収フィードバック・管理者視点UX改善)
+ * 役割：
+ *   1. setupSpreadsheetManagementBase(): 新規環境専用の初回構築関数 (既存環境では安全停止)
+ *   2. updateSpreadsheetManagementBase(): 既存環境専用の安全差分更新関数 (データ破壊ゼロ・冪等性保証)
+ * 対応指示書：DEV-01 / FIX-12_UX_FIX (実機検収フィードバック・管理者視点UX改善)
  * ============================================================================
  */
 
+/**
+ * 1. 初回構築関数（何もない新規スプレッドシート専用）
+ * ※ 既存管理基盤シートを検出した場合は、データ保護のため自動安全停止します。
+ */
 function setupSpreadsheetManagementBase() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // 14個の管理シート定義
-  var sheetDefinitions = [
+  // 安全装置：すでに主要シートが存在している場合はデータ破壊を防ぐため停止
+  var existingConfig = ss.getSheetByName("00_システム設定");
+  var existingSheets = ss.getSheetByName("01_シート管理台帳");
+  if (existingConfig || existingSheets) {
+    Logger.log("⚠️ [安全停止] 既存の管理基盤シートが検出されました。");
+    Logger.log("⚠️ 既存データの破壊を防ぐため、初回構築 (setup) の実行を自動停止しました。");
+    Logger.log("👉 既存環境の更新・UXレイアウト反映には 'updateSpreadsheetManagementBase()' を実行してください。");
+    return;
+  }
+
+  Logger.log("🚀 新規スプレッドシートへの初期管理基盤構築を開始します...");
+  var sheetDefinitions = getSheetDefinitions_();
+
+  sheetDefinitions.forEach(function(def) {
+    var sheet = ss.getSheetByName(def.name);
+    if (!sheet) {
+      sheet = ss.insertSheet(def.name);
+    }
+    sheet.appendRow(def.headers);
+    applyHeaderStyle_(sheet, def.headers.length);
+
+    if (def.initialData && def.initialData.length > 0) {
+      def.initialData.forEach(function(row) {
+        sheet.appendRow(row);
+      });
+    }
+
+    applyUxFormatting_(sheet, def);
+  });
+
+  Logger.log("✅ 新規スプレッドシート管理基盤の初期構築が完了しました。");
+}
+
+/**
+ * 2. 既存環境安全更新関数（既存データ破壊ゼロ・冪等性保証）
+ * ※ 既存のログ・履歴・ユーザー変更済み設定値を100%保持し、UXレイアウト・非表示列・新規Keyのみを差分更新します。
+ */
+function updateSpreadsheetManagementBase() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  Logger.log("🔄 既存スプレッドシート管理基盤の安全更新（データ保持＆UX改善）を開始します...");
+
+  var sheetDefinitions = getSheetDefinitions_();
+
+  sheetDefinitions.forEach(function(def) {
+    var sheet = ss.getSheetByName(def.name);
+    
+    if (!sheet) {
+      // シートが存在しない場合のみ新規作成
+      sheet = ss.insertSheet(def.name);
+      sheet.appendRow(def.headers);
+      applyHeaderStyle_(sheet, def.headers.length);
+      if (def.initialData && def.initialData.length > 0) {
+        def.initialData.forEach(function(row) {
+          sheet.appendRow(row);
+        });
+      }
+    } else {
+      // 既存シートが存在する場合：絶対データクリアを行わず、ヘッダーと差分のみ更新
+      updateHeaderStyleOnly_(sheet, def.headers);
+
+      if (def.sheetKey === "SYS_CONFIG") {
+        updateSysConfigSafely_(sheet, def.initialData);
+      } else if (def.sheetKey === "SYS_SHEETS") {
+        updateSysSheetsSafely_(sheet, def.initialData);
+      } else if (def.sheetKey === "PROJECT_STATE") {
+        updateProjectStateSafely_(sheet, def.initialData);
+      } else if (isHistoryOrLogSheet_(def.sheetKey)) {
+        appendHistoryDataSafely_(sheet, def.initialData);
+      } else if (def.initialData && def.initialData.length > 0) {
+        updateMasterDataSafely_(sheet, def.initialData);
+      }
+    }
+
+    // 表示UX設定の安全適用（折り返し・列幅・非表示）
+    applyUxFormatting_(sheet, def);
+  });
+
+  Logger.log("✅ 既存データの保持・UXレイアウト改善・新規決定事項の安全更新が完了しました。");
+}
+
+// ============================================================================
+// 内部補助関数（安全差分更新用）
+// ============================================================================
+
+/** 全14管理シートの定義データ定義 */
+function getSheetDefinitions_() {
+  return [
     {
+      sheetKey: "SYS_CONFIG",
       name: "00_システム設定",
       headers: ["設定キー", "設定値", "分類", "説明", "最終更新日時"],
       initialData: [
@@ -27,6 +119,7 @@ function setupSpreadsheetManagementBase() {
       ]
     },
     {
+      sheetKey: "SYS_SHEETS",
       name: "01_シート管理台帳",
       headers: ["シート名", "何を管理する？", "誰が使う？", "触っていい？", "状態", "シートキー", "画面表示名", "分類", "開発優先度", "読取可否", "書込可否", "正本か", "削除禁止か", "関連機能", "作成日", "最終変更日"],
       hideFromCol: 6,
@@ -49,6 +142,7 @@ function setupSpreadsheetManagementBase() {
       ]
     },
     {
+      sheetKey: "SYS_FIELDS",
       name: "02_項目定義台帳",
       headers: ["対象シートキー", "物理項目キー", "項目名", "画面表示名", "データ型", "必須判定", "固定コア項目か", "通常ドライバー非公開", "操作区分", "この項目は何か", "間違えると何に影響するか"],
       initialData: [
@@ -69,6 +163,7 @@ function setupSpreadsheetManagementBase() {
       ]
     },
     {
+      sheetKey: "SYS_DEPENDENCIES",
       name: "03_シート依存関係台帳",
       headers: ["参照元シートKey", "参照先シートKey", "使用目的", "関連FieldKey", "必須/任意", "使用機能", "状態"],
       initialData: [
@@ -80,6 +175,7 @@ function setupSpreadsheetManagementBase() {
       ]
     },
     {
+      sheetKey: "SYS_FEATURES",
       name: "04_機能管理台帳",
       headers: ["機能Key", "機能名", "画面名", "使用SheetKey", "読取/書込", "必須/任意", "使用状態", "開発優先度"],
       initialData: [
@@ -98,6 +194,7 @@ function setupSpreadsheetManagementBase() {
       ]
     },
     {
+      sheetKey: "M_OPTIONS",
       name: "05_選択肢マスタ",
       headers: ["選択肢グループKey", "選択肢値(コード)", "画面表示ラベル", "並び順", "有効フラグ", "表示バッジ色"],
       initialData: [
@@ -120,6 +217,7 @@ function setupSpreadsheetManagementBase() {
       ]
     },
     {
+      sheetKey: "M_RULES",
       name: "06_ルールマスタ",
       headers: ["ルールKey", "ルール名", "設定値/条件JSON", "警告メッセージ", "有効フラグ"],
       initialData: [
@@ -131,21 +229,25 @@ function setupSpreadsheetManagementBase() {
       ]
     },
     {
+      sheetKey: "LOG_ERROR",
       name: "09_エラーログ",
       headers: ["ログID", "発生日時", "発生機能Key", "実行ユーザー", "対象SheetKey", "対象ID", "エラーメッセージ", "詳細スタックトレース", "対応状態"],
       initialData: []
     },
     {
+      sheetKey: "LOG_APP",
       name: "10_アプリログ",
       headers: ["ログID", "操作日時", "操作ユーザー", "操作種別", "対象ID", "操作詳細JSON"],
       initialData: []
     },
     {
+      sheetKey: "LOG_HISTORY",
       name: "11_データ変更履歴",
       headers: ["履歴ID", "変更日時", "変更ユーザー", "対象SheetKey", "対象ID", "変更前JSON", "変更後JSON"],
       initialData: []
     },
     {
+      sheetKey: "LOG_SCHEMA",
       name: "12_スキーマ変更履歴",
       headers: ["構造変更ID", "変更日時", "変更種別", "対象Sheet/FieldKey", "変更前定義", "変更後定義", "変更理由"],
       initialData: [
@@ -156,6 +258,7 @@ function setupSpreadsheetManagementBase() {
       ]
     },
     {
+      sheetKey: "PROJECT_STATE",
       name: "13_PROJECT_CURRENT_STATE",
       headers: ["状態キー", "状態値", "説明", "更新日時"],
       initialData: [
@@ -169,6 +272,7 @@ function setupSpreadsheetManagementBase() {
       ]
     },
     {
+      sheetKey: "PROJECT_CHECKPOINT",
       name: "14_PROJECT_CHECKPOINT",
       headers: ["チェックポイントID", "工程名", "Gitコミットハッシュ", "Gitタグ名", "SchemaVersion", "ユーザー検証状態", "作成日時"],
       initialData: [
@@ -179,6 +283,7 @@ function setupSpreadsheetManagementBase() {
       ]
     },
     {
+      sheetKey: "PROJECT_DECISIONS",
       name: "15_PROJECT_DECISIONS",
       headers: ["決定ID", "決定内容タイトル", "決定内容", "決定理由(Why)", "関連文書番号", "決定日時"],
       initialData: [
@@ -200,48 +305,164 @@ function setupSpreadsheetManagementBase() {
       ]
     }
   ];
+}
 
-  sheetDefinitions.forEach(function(def) {
-    var sheet = ss.getSheetByName(def.name);
-    if (!sheet) {
-      sheet = ss.insertSheet(def.name);
+/** 1行目ヘッダーデザインの安全適用（データ行は触らない） */
+function updateHeaderStyleOnly_(sheet, headers) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+  } else {
+    var headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setValues([headers]);
+  }
+  var headerRangeStyle = sheet.getRange(1, 1, 1, headers.length);
+  headerRangeStyle.setBackground("#1A237E")
+                  .setFontColor("#FFFFFF")
+                  .setFontWeight("bold")
+                  .setFontSize(10);
+  sheet.setFrozenRows(1);
+}
+
+/** SYS_CONFIGの安全更新 (ユーザーが変更済みの設定値は絶対保持) */
+function updateSysConfigSafely_(sheet, initialData) {
+  var lastRow = sheet.getLastRow();
+  var existingKeys = {};
+  
+  if (lastRow > 1) {
+    var data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][0]) {
+        existingKeys[String(data[i][0]).trim()] = i + 2; // 行番号を記録
+      }
+    }
+  }
+
+  initialData.forEach(function(row) {
+    var key = row[0];
+    if (!existingKeys[key]) {
+      // 未存在の新規Keyのみ末尾に安全追加
+      sheet.appendRow(row);
     } else {
-      sheet.clear();
-    }
-    
-    // ヘッダー追加
-    sheet.appendRow(def.headers);
-    var headerRange = sheet.getRange(1, 1, 1, def.headers.length);
-    headerRange.setBackground("#1A237E")
-               .setFontColor("#FFFFFF")
-               .setFontWeight("bold")
-               .setFontSize(10);
-    sheet.setFrozenRows(1);
-
-    // 初期データ追加
-    if (def.initialData && def.initialData.length > 0) {
-      def.initialData.forEach(function(row) {
-        sheet.appendRow(row);
-      });
-    }
-
-    // 全範囲のテキスト折り返し有効化（長い説明文等の切れを防止）
-    var lastRow = sheet.getLastRow();
-    var lastCol = sheet.getLastColumn();
-    if (lastRow > 0 && lastCol > 0) {
-      sheet.getRange(1, 1, lastRow, lastCol).setWrap(true);
-    }
-
-    // 列幅自動調整
-    for (var col = 1; col <= def.headers.length; col++) {
-      sheet.autoResizeColumn(col);
-    }
-
-    // 管理列の非表示（SYS_SHEETSの6列目から11列分）
-    if (def.hideFromCol && def.hideColCount) {
-      sheet.hideColumns(def.hideFromCol, def.hideColCount);
+      // 既存Keyが存在する場合：設定値(2列目)は変更せず、説明・分類・型定義のみ安全更新
+      var rowNum = existingKeys[key];
+      sheet.getRange(rowNum, 3).setValue(row[2]); // 分類
+      sheet.getRange(rowNum, 4).setValue(row[3]); // 説明
     }
   });
+}
 
-  Logger.log("スプレッドシート管理基盤全14シートのセットアップが完了しました。(実機検収UX改善反映済)");
+/** SYS_SHEETSの安全更新 (レイアウト更新・ヘッダー・説明文更新) */
+function updateSysSheetsSafely_(sheet, initialData) {
+  var lastRow = sheet.getLastRow();
+  
+  // 既存シートのデータ全範囲を最新定義データで安全上書き（SYS_SHEETSはシステム定義データのため）
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+  }
+  
+  initialData.forEach(function(row) {
+    sheet.appendRow(row);
+  });
+}
+
+/** PROJECT_STATEの安全更新 (キーが存在すれば現在値のみ更新) */
+function updateProjectStateSafely_(sheet, initialData) {
+  var lastRow = sheet.getLastRow();
+  var existingKeys = {};
+  
+  if (lastRow > 1) {
+    var data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][0]) {
+        existingKeys[String(data[i][0]).trim()] = i + 2;
+      }
+    }
+  }
+
+  initialData.forEach(function(row) {
+    var key = row[0];
+    if (existingKeys[key]) {
+      var rowNum = existingKeys[key];
+      sheet.getRange(rowNum, 2).setValue(row[1]); // 状態値
+      sheet.getRange(rowNum, 3).setValue(row[2]); // 説明
+      sheet.getRange(rowNum, 4).setValue(row[3]); // 更新日時
+    } else {
+      sheet.appendRow(row);
+    }
+  });
+}
+
+/** 履歴・ログ系シート判定 */
+function isHistoryOrLogSheet_(sheetKey) {
+  var historyKeys = [
+    "LOG_ERROR", "LOG_APP", "LOG_HISTORY", "LOG_SCHEMA",
+    "PROJECT_CHECKPOINT", "PROJECT_DECISIONS"
+  ];
+  return historyKeys.indexOf(sheetKey) !== -1;
+}
+
+/** 履歴・ログ系シートの安全追記 (既存行は絶対削除せず、ID重複チェックの上で新規行のみ追記) */
+function appendHistoryDataSafely_(sheet, initialData) {
+  if (!initialData || initialData.length === 0) return;
+
+  var lastRow = sheet.getLastRow();
+  var existingIDs = {};
+
+  if (lastRow > 1) {
+    var data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][0]) {
+        existingIDs[String(data[i][0]).trim()] = true;
+      }
+    }
+  }
+
+  initialData.forEach(function(row) {
+    var id = row[0];
+    if (!existingIDs[id]) {
+      sheet.appendRow(row);
+    }
+  });
+}
+
+/** マスタ系シートの安全差分更新 (ID重複チェックで未登録行のみ追記) */
+function updateMasterDataSafely_(sheet, initialData) {
+  var lastRow = sheet.getLastRow();
+  var existingIDs = {};
+
+  if (lastRow > 1) {
+    var data = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+    for (var i = 0; i < data.length; i++) {
+      var compositeKey = String(data[i][0]).trim() + "_" + String(data[i][1]).trim();
+      existingIDs[compositeKey] = true;
+    }
+  }
+
+  initialData.forEach(function(row) {
+    var compositeKey = String(row[0]).trim() + "_" + String(row[1]).trim();
+    if (!existingIDs[compositeKey]) {
+      sheet.appendRow(row);
+    }
+  });
+}
+
+/** 表示UXフォーマット設定の安全適用 */
+function applyUxFormatting_(sheet, def) {
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+
+  if (lastRow > 0 && lastCol > 0) {
+    // 全タイト・データの折り返し有効化
+    sheet.getRange(1, 1, lastRow, lastCol).setWrap(true);
+  }
+
+  // 列幅自動調整
+  for (var col = 1; col <= def.headers.length; col++) {
+    sheet.autoResizeColumn(col);
+  }
+
+  // 非表示列設定 (SYS_SHEETSの6列目から11列分)
+  if (def.hideFromCol && def.hideColCount) {
+    sheet.hideColumns(def.hideFromCol, def.hideColCount);
+  }
 }
