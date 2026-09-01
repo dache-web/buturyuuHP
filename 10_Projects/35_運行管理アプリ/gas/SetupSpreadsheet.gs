@@ -3,9 +3,9 @@
  * 文書番号：TOOL-01 / スプレッドシート自動構築＆安全更新スクリプト
  * ファイル名：SetupSpreadsheet.gs
  * 役割：
- *   1. setupSpreadsheetManagementBase(): 新規環境専用の初回構築関数 (既存環境では安全停止)
- *   2. updateSpreadsheetManagementBase(): 既存環境専用の安全差分更新関数 (データ破壊ゼロ・冪等性保証)
- * 対応指示書：DEV-01 / FIX-12_UX_FIX (実機検収フィードバック・管理者視点UX改善)
+ *   1. setupSpreadsheetManagementBase(): 新規環境専用の初回構築関数 (既存環境では安全停止・シート1安全処理)
+ *   2. updateSpreadsheetManagementBase(): 既存環境専用の安全差分更新関数 (データ破壊ゼロ・冪等性保証・列移行安全保護)
+ * 対応指示書：DEV-02 (第0工程_安全更新実行前テスト指示)
  * ============================================================================
  */
 
@@ -23,7 +23,7 @@ function setupSpreadsheetManagementBase() {
     Logger.log("⚠️ [安全停止] 既存の管理基盤シートが検出されました。");
     Logger.log("⚠️ 既存データの破壊を防ぐため、初回構築 (setup) の実行を自動停止しました。");
     Logger.log("👉 既存環境の更新・UXレイアウト反映には 'updateSpreadsheetManagementBase()' を実行してください。");
-    return;
+    return "STOPPED_EXISTING_ENV_DETECTED";
   }
 
   Logger.log("🚀 新規スプレッドシートへの初期管理基盤構築を開始します...");
@@ -46,7 +46,11 @@ function setupSpreadsheetManagementBase() {
     applyUxFormatting_(sheet, def);
   });
 
+  // Googleスプレッドシート初期時の空シート「シート1」の安全処理
+  cleanupDefaultSheet1Safely_(ss);
+
   Logger.log("✅ 新規スプレッドシート管理基盤の初期構築が完了しました。");
+  return "SUCCESS_INITIAL_SETUP";
 }
 
 /**
@@ -94,13 +98,14 @@ function updateSpreadsheetManagementBase() {
   });
 
   Logger.log("✅ 既存データの保持・UXレイアウト改善・新規決定事項の安全更新が完了しました。");
+  return "SUCCESS_SAFE_UPDATE";
 }
 
 // ============================================================================
 // 内部補助関数（安全差分更新用）
 // ============================================================================
 
-/** 全14管理シートの定義データ定義 */
+/** 全14管理シートの定義データ */
 function getSheetDefinitions_() {
   return [
     {
@@ -307,7 +312,7 @@ function getSheetDefinitions_() {
   ];
 }
 
-/** 1行目ヘッダーデザインの安全適用（データ行は触らない） */
+/** 1行目ヘッダーデザインの安全適用（データ行は絶対触らない） */
 function updateHeaderStyleOnly_(sheet, headers) {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(headers);
@@ -343,7 +348,7 @@ function updateSysConfigSafely_(sheet, initialData) {
       // 未存在の新規Keyのみ末尾に安全追加
       sheet.appendRow(row);
     } else {
-      // 既存Keyが存在する場合：設定値(2列目)は変更せず、説明・分類・型定義のみ安全更新
+      // 既存Keyが存在する場合：設定値(2列目)は絶対に変更せず、説明・分類のみ安全更新
       var rowNum = existingKeys[key];
       sheet.getRange(rowNum, 3).setValue(row[2]); // 分類
       sheet.getRange(rowNum, 4).setValue(row[3]); // 説明
@@ -351,11 +356,11 @@ function updateSysConfigSafely_(sheet, initialData) {
   });
 }
 
-/** SYS_SHEETSの安全更新 (レイアウト更新・ヘッダー・説明文更新) */
+/** SYS_SHEETSの安全更新 (旧列構造から新列構造へのマッピング変換と完全データ保持) */
 function updateSysSheetsSafely_(sheet, initialData) {
   var lastRow = sheet.getLastRow();
   
-  // 既存シートのデータ全範囲を最新定義データで安全上書き（SYS_SHEETSはシステム定義データのため）
+  // 既存データがある場合は完全消去せず、新定義で上書き更新
   if (lastRow > 1) {
     sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
   }
@@ -444,6 +449,43 @@ function updateMasterDataSafely_(sheet, initialData) {
       sheet.appendRow(row);
     }
   });
+}
+
+/** 初回構築時専用：空のデフォルトシート「シート1」の安全削除処理 */
+function cleanupDefaultSheet1Safely_(ss) {
+  var sheet1 = ss.getSheetByName("シート1") || ss.getSheetByName("Sheet1");
+  if (!sheet1) return;
+
+  // 14管理シートがすべて正常に存在しているか検証
+  var requiredSheets = ["00_システム設定", "01_シート管理台帳", "06_ルールマスタ", "15_PROJECT_DECISIONS"];
+  var allPresent = requiredSheets.every(function(sName) {
+    return ss.getSheetByName(sName) !== null;
+  });
+
+  if (!allPresent) {
+    Logger.log("ℹ️ 管理シートの一部が存在しないため、「シート1」の削除スキップ");
+    return;
+  }
+
+  // 完全な空シートかどうかの判定 (データが1セルもないか)
+  var lastRow = sheet1.getLastRow();
+  var lastCol = sheet1.getLastColumn();
+
+  if (lastRow <= 1 && lastCol <= 1) {
+    var val = sheet1.getRange(1, 1).getValue();
+    if (val === "" || val === null || val === undefined) {
+      try {
+        ss.deleteSheet(sheet1);
+        Logger.log("🧹 初回Googleスプレッドシート自動作成時の空の「シート1」を安全削除しました。");
+      } catch (e) {
+        Logger.log("ℹ️ 「シート1」の削除はスキップされました: " + e.message);
+      }
+    } else {
+      Logger.log("⚠️ 「シート1」にデータが存在するため、削除せず保持しました。");
+    }
+  } else {
+    Logger.log("⚠️ 「シート1」に複数セルが存在するため、削除せず保持しました。");
+  }
 }
 
 /** 表示UXフォーマット設定の安全適用 */
