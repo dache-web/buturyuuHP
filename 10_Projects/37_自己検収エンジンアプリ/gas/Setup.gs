@@ -1,54 +1,43 @@
 /**
- * 自己検収エンジン - スプレッドシート初期構築スクリプト (第1工程 STEP2)
+ * 自己検収エンジン - スプレッドシート初期構築スクリプト (第1工程 STEP2 修正版)
+ * 方式：コンテナバインド型 (getActiveSpreadsheet利用、新規Spreadsheet作成禁止)
  */
-
-const PROP_KEY_SPREADSHEET_ID = 'SELF_VALIDATION_SPREADSHEET_ID';
 
 /**
  * 自己検収エンジン専用スプレッドシートのセットアップ関数
- * ユーザーはこの関数を選択して実行してください。
+ * 現在親となっているGoogleスプレッドシート上に8シートを構築します。
  */
 function setupSelfValidationEngine() {
-  const props = PropertiesService.getScriptProperties();
-  let spreadsheetId = props.getProperty(PROP_KEY_SPREADSHEET_ID);
-  let ss = null;
-  let isNew = false;
-
-  console.log('=== 自己検収エンジン セットアップ開始 ===');
+  console.log('=== 自己検収エンジン セットアップ開始 (コンテナバインド方式) ===');
 
   try {
-    if (spreadsheetId) {
-      try {
-        ss = SpreadsheetApp.openById(spreadsheetId);
-        console.log(`既存のスプレッドシートを再利用します。ID: ${spreadsheetId}`);
-      } catch (e) {
-        const humanMsg = `【エラー】保存されているSpreadsheet ID (${spreadsheetId}) のスプレッドシートを開けませんでした。\n` +
-          `手動削除されているかアクセス権がない可能性があります。勝手に新しいSpreadsheetは作成していません。`;
-        console.error(humanMsg);
-        console.error(`技術エラー詳細: ${e.toString()}`);
-        throw new Error(humanMsg);
-      }
-    } else {
-      isNew = true;
-      ss = SpreadsheetApp.create('自己検収エンジン_管理シート');
-      spreadsheetId = ss.getId();
-      props.setProperty(PROP_KEY_SPREADSHEET_ID, spreadsheetId);
-      console.log(`新しいスプレッドシートを作成しました。ID: ${spreadsheetId}`);
+    // 1. 現在開いている（紐づいている）アクティブなスプレッドシートを取得
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    if (!ss) {
+      const humanMsg = '【エラー】このGASがGoogleスプレッドシートに紐づいていないため、初期構築を実行できませんでした。\n' +
+        'Googleスプレッドシートを開き、「拡張機能 > Apps Script」から本スクリプトを実行してください。';
+      console.error(humanMsg);
+      throw new Error(humanMsg);
     }
 
-    // 8シートの定義
+    const spreadsheetId = ss.getId();
+    const spreadsheetName = ss.getName();
+    console.log(`対象スプレッドシート名: ${spreadsheetName} (ID: ${spreadsheetId})`);
+
+    // 2. 8シートの定義取得
     const sheetDefinitions = getSheetDefinitions_();
 
     let createdCount = 0;
     let reusedCount = 0;
 
-    // 各シートの処理
+    // 3. 各シートの確認と構築
     sheetDefinitions.forEach(def => {
       let sheet = ss.getSheetByName(def.name);
       if (!sheet) {
         sheet = ss.insertSheet(def.name);
         createdCount++;
-        console.log(`シート「${def.name}」を作成しました。`);
+        console.log(`シート「${def.name}」を新規作成しました。`);
       } else {
         reusedCount++;
         console.log(`シート「${def.name}」は既存のものを再利用します。`);
@@ -57,23 +46,23 @@ function setupSelfValidationEngine() {
       setupSheetContent_(sheet, def);
     });
 
-    // 初期生成時デフォルトの不要シート（「シート1」や「Sheet1」）を削除（他の8シートが存在する場合のみ）
+    // 4. 新規作成時の初期デフォルト空シート（「シート1」や「Sheet1」のみ）を安全に削除
     cleanDefaultSheets_(ss, sheetDefinitions.map(d => d.name));
 
-    // 結果ログ表示
+    // 5. 完了ログ表示
     console.log('====================================');
     console.log('自己検収エンジン セットアップ完了!');
-    console.log(`・区分: ${isNew ? '新規作成' : '既存再利用'}`);
-    console.log(`・スプレッドシート名: ${ss.getName()}`);
-    console.log(`・作成シート数: ${createdCount}`);
+    console.log(`・スプレッドシート名: ${spreadsheetName}`);
+    console.log(`・スプレッドシートID: ${spreadsheetId}`);
+    console.log(`・新規作成シート数: ${createdCount}`);
     console.log(`・再利用シート数: ${reusedCount}`);
     console.log(`・URL: ${ss.getUrl()}`);
     console.log('====================================');
 
     return {
       success: true,
-      isNew: isNew,
-      spreadsheetName: ss.getName(),
+      spreadsheetId: spreadsheetId,
+      spreadsheetName: spreadsheetName,
       createdCount: createdCount,
       reusedCount: reusedCount,
       url: ss.getUrl()
@@ -87,25 +76,49 @@ function setupSelfValidationEngine() {
 }
 
 /**
- * シートの内容（ヘッダーおよび初期データ）を設定する内部関数
- * 既存データを消去せず、不足分のみ追加します。
+ * シートの内容（ヘッダーおよび初期データ）を検証・設定する内部関数
  */
 function setupSheetContent_(sheet, def) {
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
 
-  // 1. ヘッダー設定（空シートの場合のみ設置）
+  // A. ヘッダーの確認と設定
   if (lastRow === 0 || lastCol === 0) {
+    // 完全な空シートの場合、1行目にヘッダーを設置
     sheet.getRange(1, 1, 1, def.headers.length).setValues([def.headers]);
+  } else {
+    // 既存データがある場合、ヘッダー行（1行目）の検証
+    const currentHeaders = sheet.getRange(1, 1, 1, Math.max(lastCol, def.headers.length)).getValues()[0];
+    
+    // 必須ヘッダーが正しく存在するか確認
+    let isHeaderValid = true;
+    for (let i = 0; i < def.headers.length; i++) {
+      if (!currentHeaders[i] || String(currentHeaders[i]).trim() !== def.headers[i]) {
+        isHeaderValid = false;
+        break;
+      }
+    }
+
+    if (!isHeaderValid) {
+      // 1行目が完全に空であるかチェック（ヘッダー未設定の場合）
+      const isEmptyHeader = currentHeaders.every(cell => String(cell).trim() === '');
+      if (isEmptyHeader) {
+        sheet.getRange(1, 1, 1, def.headers.length).setValues([def.headers]);
+        console.log(`シート「${sheet.getName()}」のヘッダーを設定しました。`);
+      } else {
+        // 想定と異なる列構造が存在する場合は警告ログを出して上書き防止
+        console.warn(`【注意】シート「${sheet.getName()}」の既存ヘッダー構造が定義と異なる可能性があります。データ保護のため既存ヘッダーは上書きしません。`);
+      }
+    }
   }
 
-  // 見た目スタイル最小限設定
+  // 見た目スタイル最小限設定（1行目固定、背景色、太字）
   const headerRange = sheet.getRange(1, 1, 1, def.headers.length);
   headerRange.setBackground('#f3f3f3');
   headerRange.setFontWeight('bold');
   sheet.setFrozenRows(1);
 
-  // 2. 初期値追加（既存項目キーと照合して未設定の行のみ末尾に追加）
+  // B. 初期データの追加（既存項目キーと照合して未設定の行のみ末尾に追加）
   if (def.initialData && def.initialData.length > 0) {
     const currentLastRow = sheet.getLastRow();
     let existingKeys = new Set();
@@ -114,7 +127,9 @@ function setupSheetContent_(sheet, def) {
       // 1列目（項目キーまたは項目名）をキーとして重複チェック
       const existingValues = sheet.getRange(2, 1, currentLastRow - 1, 1).getValues();
       existingValues.forEach(row => {
-        if (row[0] !== '') existingKeys.add(String(row[0]).trim());
+        if (row[0] !== '' && row[0] !== null && row[0] !== undefined) {
+          existingKeys.add(String(row[0]).trim());
+        }
       });
     }
 
@@ -138,27 +153,37 @@ function setupSheetContent_(sheet, def) {
   try {
     sheet.autoResizeColumns(1, def.headers.length);
   } catch (e) {
-    // autoResizeColumnsのエラーは無視
+    // エラーは無視
   }
 }
 
 /**
- * 新規作成時に生成されるデフォルトシート（シート1 / Sheet1 など）を安全に削除
+ * 初期構築時に自動で作成される空のデフォルトシート（「シート1」または「Sheet1」のみ）を安全に削除
+ * ユーザー作成の独自シート（「メモ」「検証用」等）は絶対に削除しません。
  */
-function cleanDefaultSheets_(ss, validSheetNames) {
-  const validSet = new Set(validSheetNames);
-  const allSheets = ss.getSheets();
+function cleanDefaultSheets_(ss, requiredSheetNames) {
+  const requiredSet = new Set(requiredSheetNames);
   
-  if (allSheets.length <= validSheetNames.length) return;
+  // 8シートがすべて存在するかチェック
+  const hasAllRequired = requiredSheetNames.every(name => ss.getSheetByName(name) !== null);
+  if (!hasAllRequired) return;
 
+  // 削除を許可するデフォルト初期シート名のみ定義
+  const DEFAULT_TARGET_NAMES = new Set(['シート1', 'Sheet1']);
+
+  const allSheets = ss.getSheets();
   allSheets.forEach(sheet => {
     const name = sheet.getName();
-    if (!validSet.has(name)) {
-      try {
-        ss.deleteSheet(sheet);
-        console.log(`初期デフォルトシート「${name}」を削除しました。`);
-      } catch (e) {
-        // 最後の1枚だった場合等は削除失敗することがあるためスルー
+    
+    // 必須8シートに含まれず、かつ指定のデフォルト初期シート名であり、完全に空の場合のみ削除
+    if (!requiredSet.has(name) && DEFAULT_TARGET_NAMES.has(name)) {
+      if (sheet.getLastRow() === 0 && sheet.getLastColumn() === 0) {
+        try {
+          ss.deleteSheet(sheet);
+          console.log(`空の初期デフォルトシート「${name}」を安全に削除しました。`);
+        } catch (e) {
+          // 削除不可の場合は無視
+        }
       }
     }
   });
