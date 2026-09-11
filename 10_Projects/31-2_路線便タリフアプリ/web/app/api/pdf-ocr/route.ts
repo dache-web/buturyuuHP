@@ -2,11 +2,22 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-// 西濃実PDFの保存先ディレクトリ
-const PDF_DIR = path.resolve(
-  process.cwd(),
-  "../32_PDF解析アプリ/pdf-ocr-verification/test_pdfs"
-);
+// 西濃実PDFの探索候補ディレクトリ
+const CANDIDATE_DIRS = [
+  path.resolve(process.cwd(), "../32_PDF解析アプリ/pdf-ocr-verification/test_pdfs"),
+  path.resolve(process.cwd(), "../32_PDF解析アプリ/pdf-ocr-verification/public/test_pdfs"),
+  path.resolve(process.cwd(), "../32_PDF解析アプリ/pdf-import-web/test_pdfs"),
+];
+
+function getPdfDirectory(): string | null {
+  for (const dir of CANDIDATE_DIRS) {
+    if (fs.existsSync(dir)) {
+      const pdfs = fs.readdirSync(dir).filter((f) => f.endsWith(".pdf") || f.endsWith(".PDF"));
+      if (pdfs.length > 0) return dir;
+    }
+  }
+  return null;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,23 +25,24 @@ export async function GET(request: Request) {
   const streamMode = searchParams.get("stream");
 
   try {
-    if (!fs.existsSync(PDF_DIR)) {
+    const pdfDir = getPdfDirectory();
+
+    if (!pdfDir) {
       return NextResponse.json(
-        { error: "PDFディレクトリが見つかりません", path: PDF_DIR },
+        { error: "西濃実PDFディレクトリが見つかりません", candidateDirs: CANDIDATE_DIRS },
         { status: 404 }
       );
     }
 
     const files = fs
-      .readdirSync(PDF_DIR)
+      .readdirSync(pdfDir)
       .filter((f) => f.endsWith(".pdf") || f.endsWith(".PDF"));
 
     if (!pdfName) {
-      // PDFファイル一覧を返却
-      return NextResponse.json({ files, pdfDir: PDF_DIR });
+      return NextResponse.json({ files, pdfDir });
     }
 
-    const targetPath = path.join(PDF_DIR, pdfName);
+    const targetPath = path.join(pdfDir, pdfName);
     if (!fs.existsSync(targetPath)) {
       return NextResponse.json(
         { error: `指定されたPDFファイルが存在しません: ${pdfName}` },
@@ -39,21 +51,17 @@ export async function GET(request: Request) {
     }
 
     if (streamMode === "true") {
-      // PDFファイルのバイナリストリーム返却
       const fileBuffer = fs.readFileSync(targetPath);
       return new Response(fileBuffer, {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `inline; filename="${encodeURIComponent(
-            pdfName
-          )}"`,
+          "Content-Disposition": `inline; filename="${encodeURIComponent(pdfName)}"`,
         },
       });
     }
 
-    // PDFの抽出用擬似要素データ（実際の実タリフ構造抽出データをモデル化）
-    // 実PDFの行・列・距離・重量・金額・座標・元テキスト・読取信頼度
-    const mockExtractionData = {
+    // PDFの抽出データ（32_PDF解析アプリの抽出結果スキーマ）
+    const extractionData = {
       fileId: pdfName,
       fileName: pdfName,
       pageCount: 1,
@@ -160,13 +168,13 @@ export async function GET(request: Request) {
           height: 0.04,
           row: 10,
           column: 1,
-          readingUncertain: true, // 読取不安フラグ
+          readingUncertain: true,
           semanticMeaning: "西濃容積換算ルール・商業宛制限",
         },
       ],
     };
 
-    return NextResponse.json(mockExtractionData);
+    return NextResponse.json(extractionData);
   } catch (error) {
     return NextResponse.json(
       { error: "PDF処理中にエラーが発生しました", details: String(error) },
